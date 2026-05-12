@@ -26,50 +26,106 @@ document.addEventListener('DOMContentLoaded', function() {
         cursorGlow.style.top = e.clientY + 'px';
     });
 
-    // --- Particles ---
+    // --- Ambient drifting fog blobs (systemdlc-inspired) ---
     var canvas = document.getElementById('particlesCanvas');
     var ctx = canvas.getContext('2d');
-    var particles = [];
+    var blobs = [];
+    var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    function createParticle() {
+    // Palette of cool dusty smoke tones (HSL)
+    var smokePalette = [
+        { h: 215, s: 45, l: 68 }, // blue
+        { h: 235, s: 35, l: 66 }, // periwinkle
+        { h: 260, s: 30, l: 62 }, // soft violet
+        { h: 195, s: 40, l: 66 }, // pale cyan
+        { h: 280, s: 28, l: 60 }, // dusty purple
+        { h: 205, s: 35, l: 70 }  // sky
+    ];
+
+    function createBlob(seed) {
+        var p = smokePalette[Math.floor(Math.random() * smokePalette.length)];
+        var isLarge = Math.random() < 0.45;
         return {
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            size: Math.random() * 1.5 + 0.5,
-            speedX: (Math.random() - 0.5) * 0.5,
-            speedY: (Math.random() - 0.5) * 0.5,
-            opacity: Math.random() * 0.5 + 0.1
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            baseR: isLarge ? (200 + Math.random() * 260) : (70 + Math.random() * 140),
+            vx: (Math.random() - 0.5) * 0.22,
+            vy: (Math.random() - 0.5) * 0.18 - 0.02, // gentle upward bias
+            h: p.h, s: p.s, l: p.l,
+            baseOp: isLarge ? (0.04 + Math.random() * 0.05) : (0.06 + Math.random() * 0.06),
+            swirl: Math.random() * Math.PI * 2,
+            swirlSpeed: 0.0006 + Math.random() * 0.0016,
+            swirlAmp: 25 + Math.random() * 70,
+            // Secondary swirl for irregular wispy shape
+            swirl2: Math.random() * Math.PI * 2,
+            swirl2Speed: 0.001 + Math.random() * 0.0024,
+            swirl2Amp: 8 + Math.random() * 24,
+            pulse: Math.random() * Math.PI * 2,
+            pulseSpeed: 0.0008 + Math.random() * 0.0022,
+            squish: 0.75 + Math.random() * 0.5 // non-circular shape
         };
     }
 
-    for (var i = 0; i < 50; i++) {
-        particles.push(createParticle());
-    }
+    var BLOB_COUNT = 14;
+    for (var i = 0; i < BLOB_COUNT; i++) blobs.push(createBlob(i));
 
-    function animateParticles() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for (var i = 0; i < particles.length; i++) {
-            var p = particles[i];
-            p.x += p.speedX;
-            p.y += p.speedY;
-            if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
-                particles[i] = createParticle();
-            }
-            ctx.fillStyle = 'rgba(255, 255, 255, ' + p.opacity + ')';
+    function animateBlobs() {
+        var W = window.innerWidth, H = window.innerHeight;
+        ctx.clearRect(0, 0, W, H);
+        // Additive blending for soft "light through fog" feel
+        ctx.globalCompositeOperation = 'screen';
+        for (var i = 0; i < blobs.length; i++) {
+            var b = blobs[i];
+            b.swirl += b.swirlSpeed;
+            b.swirl2 += b.swirl2Speed;
+            b.pulse += b.pulseSpeed;
+            b.x += b.vx;
+            b.y += b.vy;
+            // wrap toroidally
+            if (b.x < -b.baseR) b.x = W + b.baseR;
+            else if (b.x > W + b.baseR) b.x = -b.baseR;
+            if (b.y < -b.baseR) b.y = H + b.baseR;
+            else if (b.y > H + b.baseR) b.y = -b.baseR;
+
+            // Compound swirl offset (two frequencies → organic wandering)
+            var ox = Math.cos(b.swirl) * b.swirlAmp + Math.cos(b.swirl2) * b.swirl2Amp;
+            var oy = Math.sin(b.swirl * 1.3) * b.swirlAmp + Math.sin(b.swirl2 * 1.7) * b.swirl2Amp;
+            var pulseFactor = 1 + Math.sin(b.pulse) * 0.22;
+            var r = b.baseR * pulseFactor;
+            var op = b.baseOp * (0.72 + Math.sin(b.pulse * 0.7) * 0.28);
+            var cx = b.x + ox, cy = b.y + oy;
+
+            // Save + apply a slight squish for non-circular smoke shape
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(b.swirl * 0.4);
+            ctx.scale(1, b.squish);
+            var grd = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+            grd.addColorStop(0,    'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,' + op + ')');
+            grd.addColorStop(0.35, 'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,' + (op * 0.55) + ')');
+            grd.addColorStop(0.7,  'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,' + (op * 0.18) + ')');
+            grd.addColorStop(1,    'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,0)');
+            ctx.fillStyle = grd;
             ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
         }
-        requestAnimationFrame(animateParticles);
+        ctx.globalCompositeOperation = 'source-over';
+        if (!prefersReducedMotion) requestAnimationFrame(animateBlobs);
     }
-    animateParticles();
+    animateBlobs();
 
     // --- Navbar Scroll ---
     window.addEventListener('scroll', function() {
@@ -153,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         filtered.forEach(function(cmd, idx) {
             var card = document.createElement('div');
-            card.className = 'cmd-card';
+            card.className = 'cmd-card tilt';
             card.style.animationDelay = (idx * 0.05) + 's';
 
             var title = cmd.title[currentLang] || cmd.title['en'];
@@ -245,6 +301,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             commandsList.appendChild(card);
         });
+        setupTilt();
     }
 
     shellTabs.forEach(function(tab) {
@@ -272,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         window.artifactsData.forEach(function(art, idx) {
             var card = document.createElement('div');
-            card.className = 'art-card reveal';
+            card.className = 'art-card reveal tilt';
             card.style.setProperty('--i', idx);
 
             var title = art.title[currentLang] || art.title['en'];
@@ -319,6 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
             artifactsGrid.appendChild(card);
         });
         setupScrollReveal();
+        setupTilt();
     }
 
     // --- Render FAQ ---
@@ -327,7 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         window.faqData.forEach(function(item) {
             var el = document.createElement('div');
-            el.className = 'faq-item reveal';
+            el.className = 'faq-item reveal tilt';
 
             var q = item.q[currentLang] || item.q['en'];
             var a = item.a[currentLang] || item.a['en'];
@@ -373,14 +431,18 @@ document.addEventListener('DOMContentLoaded', function() {
             faqList.appendChild(el);
         });
         setupScrollReveal();
+        setupTilt();
     }
 
     // --- Toast ---
     var toastTimeout;
     function showToast() {
         clearTimeout(toastTimeout);
+        // Force reflow so the entrance + check + sparks animations replay on every call
+        toast.classList.remove('show');
+        void toast.offsetWidth;
         toast.classList.add('show');
-        toastTimeout = setTimeout(function() { toast.classList.remove('show'); }, 2500);
+        toastTimeout = setTimeout(function() { toast.classList.remove('show'); }, 2400);
     }
 
     // --- Scroll Reveal ---
@@ -397,7 +459,95 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.reveal').forEach(function(el) { observer.observe(el); });
     }
 
+    // --- Tilt: "bend under cursor" 3D effect for all .tilt tiles ---
+    function setupTilt() {
+        if (prefersReducedMotion) return;
+        var tiles = document.querySelectorAll('.tilt');
+        tiles.forEach(function(el) {
+            if (el._tiltBound) return;
+            el._tiltBound = true;
+
+            var rafId = 0;
+            var pending = null;
+            // Read tilt multiplier from CSS custom property (default 1)
+            var multStr = getComputedStyle(el).getPropertyValue('--tilt-mult');
+            var mult = parseFloat(multStr);
+            if (!isFinite(mult) || mult <= 0) mult = 1;
+
+            function apply() {
+                rafId = 0;
+                if (!pending) return;
+                var rect = el.getBoundingClientRect();
+                if (!rect.width || !rect.height) return;
+                var mx = pending.x - rect.left;
+                var my = pending.y - rect.top;
+                var nx = mx / rect.width - 0.5;   // -0.5 .. 0.5
+                var ny = my / rect.height - 0.5;
+                if (nx < -0.5) nx = -0.5; else if (nx > 0.5) nx = 0.5;
+                if (ny < -0.5) ny = -0.5; else if (ny > 0.5) ny = 0.5;
+                var aspect = rect.width / rect.height;
+                var maxAngle = (aspect > 3 ? 3.5 : (aspect > 2 ? 5.5 : 8)) * mult;
+                // "Bend under cursor": cursor area dips back, opposite side lifts
+                var rx = (-ny * maxAngle).toFixed(2);
+                var ry = (nx * maxAngle).toFixed(2);
+                el.style.setProperty('--rx', rx + 'deg');
+                el.style.setProperty('--ry', ry + 'deg');
+                el.style.setProperty('--mx', mx.toFixed(1) + 'px');
+                el.style.setProperty('--my', my.toFixed(1) + 'px');
+            }
+
+            el.addEventListener('mouseenter', function(e) {
+                el.classList.add('tilting');
+                pending = { x: e.clientX, y: e.clientY };
+                if (!rafId) rafId = requestAnimationFrame(apply);
+            });
+
+            el.addEventListener('mousemove', function(e) {
+                pending = { x: e.clientX, y: e.clientY };
+                if (!rafId) rafId = requestAnimationFrame(apply);
+            });
+
+            el.addEventListener('mouseleave', function() {
+                el.classList.remove('tilting');
+                el.style.setProperty('--rx', '0deg');
+                el.style.setProperty('--ry', '0deg');
+                pending = null;
+            });
+        });
+    }
+
+    // --- Support: mail copy ---
+    document.querySelectorAll('.support-card[data-copy]').forEach(function(card) {
+        card.addEventListener('click', function(e) {
+            e.preventDefault();
+            var text = card.getAttribute('data-copy');
+            if (!text) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(showToast, fallbackCopy);
+            } else {
+                fallbackCopy();
+            }
+            function fallbackCopy() {
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); showToast(); } catch (_) {}
+                document.body.removeChild(ta);
+            }
+        });
+    });
+
     // --- Init ---
     statCmds.textContent = window.commandsData.length + '+';
+    // Dynamic partner count
+    var statPartners = document.getElementById('statPartners');
+    if (statPartners) {
+        var partnerCount = document.querySelectorAll('.partner-list > li').length;
+        if (partnerCount > 0) statPartners.textContent = partnerCount;
+    }
     setLanguage('ru');
+    setupTilt(); // bind static tilt tiles (partners, support)
 });
