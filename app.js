@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var currentLang = 'ru';
     var activeShell = 'powershell';
     var activeCategory = 'all';
+    var searchQuery = '';
 
     // --- DOM Elements ---
     var cursorGlow = document.getElementById('cursorGlow');
@@ -17,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var faqList = document.getElementById('faqList');
     var shellTabs = document.querySelectorAll('.shell-tab');
     var catTabs = document.querySelectorAll('.cat-tab');
+    var cmdSearchInput = document.getElementById('cmdSearch');
+    var cmdSearchWrap = cmdSearchInput ? cmdSearchInput.closest('.cmd-search') : null;
+    var cmdSearchClear = document.getElementById('cmdSearchClear');
     var toast = document.getElementById('toast');
     var statCmds = document.getElementById('statCmds');
 
@@ -167,6 +171,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+            var key = el.getAttribute('data-i18n-placeholder');
+            if (window.i18n[lang] && window.i18n[lang][key]) {
+                el.setAttribute('placeholder', window.i18n[lang][key]);
+            }
+        });
+
         renderCommands();
         renderArtifacts();
         renderFAQ();
@@ -193,16 +204,22 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderCommands() {
         commandsList.innerHTML = '';
 
+        var q = searchQuery.trim().toLowerCase();
         var filtered = window.commandsData.filter(function(cmd) {
             var matchShell = cmd.shell === activeShell;
             var matchCategory = activeCategory === 'all' || cmd.category === activeCategory;
-            return matchShell && matchCategory;
+            if (!matchShell || !matchCategory) return false;
+            if (!q) return true;
+            var title = (cmd.title[currentLang] || cmd.title['en'] || '').toLowerCase();
+            var desc = (cmd.desc[currentLang] || cmd.desc['en'] || '').toLowerCase();
+            var code = (cmd.code || '').toLowerCase();
+            return title.indexOf(q) !== -1 || desc.indexOf(q) !== -1 || code.indexOf(q) !== -1;
         });
 
         if (filtered.length === 0) {
             var emptyP = document.createElement('p');
             emptyP.style.cssText = 'color: var(--grey); text-align: center; padding: 40px;';
-            emptyP.textContent = 'Нет команд.';
+            emptyP.textContent = (window.i18n[currentLang] && window.i18n[currentLang]['cmd_empty']) || 'No commands found.';
             commandsList.appendChild(emptyP);
             return;
         }
@@ -321,6 +338,32 @@ document.addEventListener('DOMContentLoaded', function() {
             renderCommands();
         });
     });
+
+    if (cmdSearchInput) {
+        cmdSearchInput.addEventListener('input', function() {
+            searchQuery = cmdSearchInput.value;
+            if (cmdSearchWrap) cmdSearchWrap.classList.toggle('has-value', searchQuery.length > 0);
+            renderCommands();
+        });
+        cmdSearchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && cmdSearchInput.value) {
+                cmdSearchInput.value = '';
+                searchQuery = '';
+                if (cmdSearchWrap) cmdSearchWrap.classList.remove('has-value');
+                renderCommands();
+            }
+        });
+    }
+    if (cmdSearchClear) {
+        cmdSearchClear.addEventListener('click', function() {
+            if (!cmdSearchInput) return;
+            cmdSearchInput.value = '';
+            searchQuery = '';
+            if (cmdSearchWrap) cmdSearchWrap.classList.remove('has-value');
+            cmdSearchInput.focus();
+            renderCommands();
+        });
+    }
 
     // --- Render Artifacts ---
     function renderArtifacts() {

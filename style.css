@@ -473,6 +473,62 @@ ul { list-style: none; }
    ============================================================ */
 .commands-section { background: transparent; }
 
+/* Toolbar: shell tabs + search */
+.cmd-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+.cmd-toolbar .shell-tabs { margin-bottom: 0; }
+
+/* Search */
+.cmd-search {
+    position: relative;
+    display: flex; align-items: center;
+    flex: 1; max-width: 360px;
+    min-width: 220px;
+    background: var(--bg3);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0 12px;
+    transition: border-color 0.25s var(--ease), background 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+.cmd-search:focus-within {
+    border-color: rgba(255,255,255,0.32);
+    background: var(--surface);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+}
+.cmd-search-icon {
+    color: var(--grey2);
+    flex-shrink: 0;
+    transition: color 0.25s var(--ease);
+}
+.cmd-search:focus-within .cmd-search-icon { color: white; }
+.cmd-search-input {
+    flex: 1;
+    background: transparent;
+    border: none; outline: none;
+    color: white;
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 10px 8px;
+    min-width: 0;
+}
+.cmd-search-input::placeholder { color: var(--grey2); }
+.cmd-search-clear {
+    background: transparent; border: none;
+    color: var(--grey2);
+    padding: 4px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: none;
+    transition: color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.cmd-search-clear:hover { color: white; background: rgba(255,255,255,0.08); }
+.cmd-search.has-value .cmd-search-clear { display: inline-flex; }
+
 /* Shell tabs */
 .shell-tabs {
     display: flex; gap: 4px;
@@ -1325,6 +1381,8 @@ ul { list-style: none; }
     .container { padding: 0 20px; }
     .shell-tabs { width: 100%; }
     .shell-tab { flex: 1; text-align: center; }
+    .cmd-toolbar { flex-direction: column; align-items: stretch; }
+    .cmd-search { max-width: none; width: 100%; }
     .artifacts-grid { grid-template-columns: 1fr; }
     .partners-grid { grid-template-columns: 1fr; }
     .support-card { padding: 24px; min-height: 200px; }
