@@ -88,18 +88,23 @@ ul { list-style: none; }
 
 /* ============================================================
    CURSOR GLOW
+   Sits above tiles (z-index 998) so that mix-blend-mode blends
+   directly with the surface under the cursor — sitting BEHIND
+   backdrop-filter cards previously created a rectangular
+   cut-out artifact at tile edges (the visible "square glow").
    ============================================================ */
 .cursor-glow {
     position: fixed;
-    width: 420px; height: 420px;
+    width: 480px; height: 480px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(160, 180, 220, 0.10) 0%, rgba(160,180,220,0.04) 35%, transparent 70%);
+    background: radial-gradient(circle, rgba(190, 210, 245, 0.12) 0%, rgba(160,180,220,0.045) 38%, transparent 72%);
     pointer-events: none;
     transform: translate(-50%, -50%);
-    transition: transform 0.1s linear;
-    z-index: 0;
+    transition: transform 0.1s linear, opacity 0.3s var(--ease);
+    z-index: 998;
     mix-blend-mode: screen;
-    filter: blur(2px);
+    filter: blur(4px);
+    will-change: left, top;
 }
 
 /* ============================================================
@@ -961,7 +966,7 @@ ul { list-style: none; }
 .partner-star { color: var(--grey2); font-size: 0.8rem; animation: twinkle 3s infinite ease-in-out; }
 
 /* ============================================================
-   HANG / CHAIN SYSTEM — element suspended from chain
+   HANG / CHAIN SYSTEM — element suspended from a glowing chain
    ============================================================ */
 .hang {
     display: inline-block;
@@ -973,27 +978,77 @@ ul { list-style: none; }
 .hang.hang-2 { animation: hangSwing 5.8s ease-in-out -2.3s infinite; }
 
 @keyframes hangSwing {
-    0%, 100% { transform: rotate(-1.4deg); }
-    50%      { transform: rotate(1.4deg); }
+    0%, 100% { transform: rotate(-1.6deg); }
+    25%      { transform: rotate(0.4deg); }
+    50%      { transform: rotate(1.6deg); }
+    75%      { transform: rotate(-0.3deg); }
 }
 
-/* Chain — SVG with 6 interlocking links, fades into nothing at the top */
+/* Chain wrapper — holds links, energy pulse, and ambient sparks */
 .chain {
     position: absolute;
     left: 50%;
     bottom: calc(100% + 4px);
-    width: 14px;
-    height: 70px;
+    width: 18px;
+    height: 78px;
     transform: translateX(-50%);
     pointer-events: none;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 80' fill='none' stroke='%23ffffff' stroke-opacity='0.42' stroke-width='1.6' stroke-linecap='round'%3E%3Cellipse cx='7' cy='8' rx='3.5' ry='6'/%3E%3Cellipse cx='7' cy='20' rx='5' ry='4'/%3E%3Cellipse cx='7' cy='32' rx='3.5' ry='6'/%3E%3Cellipse cx='7' cy='44' rx='5' ry='4'/%3E%3Cellipse cx='7' cy='56' rx='3.5' ry='6'/%3E%3Cellipse cx='7' cy='68' rx='5' ry='4'/%3E%3C/svg%3E");
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.55) 18%, #000 55%);
+            mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.55) 18%, #000 55%);
+    filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.6))
+            drop-shadow(0 0 4px rgba(150, 180, 255, 0.18));
+    /* Subtle outer aura behind the chain */
+    background:
+        radial-gradient(ellipse 60% 100% at 50% 50%, rgba(160, 190, 255, 0.06), transparent 70%),
+        url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 80' fill='none' stroke='%23ffffff' stroke-opacity='0.5' stroke-width='1.7' stroke-linecap='round'%3E%3Cellipse cx='7' cy='8' rx='3.5' ry='6'/%3E%3Cellipse cx='7' cy='20' rx='5' ry='4'/%3E%3Cellipse cx='7' cy='32' rx='3.5' ry='6'/%3E%3Cellipse cx='7' cy='44' rx='5' ry='4'/%3E%3Cellipse cx='7' cy='56' rx='3.5' ry='6'/%3E%3Cellipse cx='7' cy='68' rx='5' ry='4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center, center bottom;
+    background-size: 100% 100%, 14px 80px;
+}
+
+/* Inner highlight that traces the chain links (creates "metal shine") */
+.chain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 80' fill='none' stroke='%23eaf2ff' stroke-opacity='0.85' stroke-width='0.5' stroke-linecap='round'%3E%3Cpath d='M5.5 4 L5.5 12'/%3E%3Cpath d='M3.5 18 L3.5 22'/%3E%3Cpath d='M5.5 28 L5.5 36'/%3E%3Cpath d='M3.5 42 L3.5 46'/%3E%3Cpath d='M5.5 52 L5.5 60'/%3E%3Cpath d='M3.5 66 L3.5 70'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: center bottom;
     background-size: 14px 80px;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 25%, #000 60%);
-            mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 25%, #000 60%);
-    filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.6));
+    pointer-events: none;
+    opacity: 0.7;
 }
+
+/* Energy pulse traveling down the chain */
+.chain::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -10%;
+    width: 14px;
+    height: 28px;
+    transform: translateX(-50%);
+    pointer-events: none;
+    background: radial-gradient(ellipse 60% 50% at 50% 50%,
+        rgba(180, 215, 255, 0.95) 0%,
+        rgba(140, 190, 255, 0.6) 30%,
+        rgba(120, 160, 255, 0.25) 55%,
+        transparent 75%);
+    filter: blur(2px);
+    mix-blend-mode: screen;
+    animation: chainPulse 3.6s cubic-bezier(0.55, 0, 0.5, 1) infinite;
+    opacity: 0;
+}
+
+@keyframes chainPulse {
+    0%   { top: -20%; opacity: 0; }
+    8%   { opacity: 1; }
+    85%  { opacity: 0.7; }
+    100% { top: 105%; opacity: 0; }
+}
+
+/* Stagger the two chains' pulses so they don't fire in sync */
+.hang.hang-2 .chain::after { animation-delay: -1.8s; animation-duration: 4.2s; }
 
 /* Bolt / rivet — anchors the chain to the element's top edge */
 .chain-bolt {
@@ -1001,27 +1056,104 @@ ul { list-style: none; }
     top: -3px;
     left: 50%;
     transform: translateX(-50%);
-    width: 10px; height: 10px;
+    width: 12px; height: 12px;
     border-radius: 50%;
     background:
-        radial-gradient(circle at 35% 30%, rgba(255,255,255,0.95), rgba(180,180,190,0.7) 35%, rgba(60,60,70,0.95) 75%, rgba(30,30,35,1));
+        radial-gradient(circle at 35% 30%, rgba(255,255,255,0.98), rgba(190,200,220,0.75) 30%, rgba(70,80,100,0.95) 72%, rgba(25,28,38,1));
     box-shadow:
         0 1px 2px rgba(0,0,0,0.7),
-        inset 0 0.5px 0.5px rgba(255,255,255,0.6),
-        0 0 6px rgba(180,180,200,0.25);
+        inset 0 0.5px 0.5px rgba(255,255,255,0.65),
+        0 0 10px rgba(160, 190, 255, 0.45),
+        0 0 22px rgba(120, 160, 255, 0.25);
     pointer-events: none;
     z-index: 3;
+    animation: boltGlow 3.2s ease-in-out infinite;
 }
+
+/* Pulsing rune-like ring around the bolt */
+.chain-bolt::before {
+    content: '';
+    position: absolute;
+    inset: -7px;
+    border-radius: 50%;
+    border: 1px solid rgba(160, 195, 255, 0.4);
+    box-shadow:
+        0 0 10px rgba(140, 180, 255, 0.35),
+        inset 0 0 6px rgba(140, 180, 255, 0.2);
+    pointer-events: none;
+    animation: runePulse 2.8s ease-in-out infinite;
+}
+
 .chain-bolt::after {
     content: '';
     position: absolute;
-    inset: 3px;
+    inset: 3.5px;
     border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.4), transparent 60%);
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.5), transparent 60%);
 }
 
-/* When user hovers the hanging element, suspend the swing for a moment */
-.hang:hover { animation-play-state: paused; }
+@keyframes boltGlow {
+    0%, 100% {
+        box-shadow:
+            0 1px 2px rgba(0,0,0,0.7),
+            inset 0 0.5px 0.5px rgba(255,255,255,0.65),
+            0 0 10px rgba(160, 190, 255, 0.45),
+            0 0 22px rgba(120, 160, 255, 0.25);
+    }
+    50% {
+        box-shadow:
+            0 1px 2px rgba(0,0,0,0.7),
+            inset 0 0.5px 0.5px rgba(255,255,255,0.85),
+            0 0 16px rgba(180, 210, 255, 0.7),
+            0 0 32px rgba(140, 180, 255, 0.45);
+    }
+}
+
+@keyframes runePulse {
+    0%, 100% { transform: scale(1); opacity: 0.55; }
+    50%      { transform: scale(1.6); opacity: 0; }
+}
+
+/* Ambient sparks dancing around the bolt (anchored to .hang container) */
+.hang::before,
+.hang::after {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 4;
+    background: radial-gradient(circle, rgba(220, 235, 255, 1) 0%, rgba(160, 200, 255, 0.7) 40%, transparent 70%);
+    box-shadow: 0 0 6px rgba(180, 210, 255, 0.9), 0 0 12px rgba(140, 180, 255, 0.5);
+    opacity: 0;
+    will-change: transform, opacity;
+}
+.hang::before { animation: sparkFly1 4.2s ease-in-out infinite; }
+.hang::after  { animation: sparkFly2 5.1s ease-in-out -1.7s infinite; }
+
+@keyframes sparkFly1 {
+    0%   { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+    12%  { opacity: 1; }
+    50%  { transform: translate(-160%, -22px) scale(1); opacity: 0.7; }
+    100% { transform: translate(-260%, -42px) scale(0.2); opacity: 0; }
+}
+@keyframes sparkFly2 {
+    0%   { transform: translate(-50%, 0) scale(0.4); opacity: 0; }
+    14%  { opacity: 1; }
+    50%  { transform: translate(60%, -26px) scale(0.9); opacity: 0.7; }
+    100% { transform: translate(180%, -48px) scale(0.2); opacity: 0; }
+}
+
+/* When user hovers the hanging element, the chain swings harder */
+.hang:hover {
+    animation-duration: 2.6s;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.hang:hover .chain-bolt {
+    animation-duration: 1.4s;
+}
 
 .partners-grid {
     display: grid;
