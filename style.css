@@ -1406,6 +1406,19 @@ ul { list-style: none; }
     .stat-sep { display: none; }
     .section { padding: 80px 0; }
     .hero-card { width: 110px; height: 110px; }
+
+    /* Slimmer chain on tablet-ish widths */
+    .chain {
+        width: 22px;
+        height: 104px;
+        background-size: 22px 52px, 22px 132px;
+    }
+    @keyframes chainSheen {
+        0%, 100% { background-position: center -34px, center bottom; }
+        50%      { background-position: center 104px, center bottom; }
+    }
+    .chain-bolt { width: 15px; height: 15px; top: -4px; }
+    .hang.hang-1 { margin-bottom: 84px; }
 }
 
 @media (max-width: 900px) {
@@ -1419,6 +1432,23 @@ ul { list-style: none; }
     .shell-tab { flex: 1; text-align: center; }
     .cmd-toolbar { flex-direction: column; align-items: stretch; }
     .cmd-search { max-width: none; width: 100%; }
+
+    /* Compact chain on small phones */
+    .chain {
+        width: 18px;
+        height: 88px;
+        background-size: 18px 44px, 18px 112px;
+    }
+    @keyframes chainSheen {
+        0%, 100% { background-position: center -28px, center bottom; }
+        50%      { background-position: center 88px, center bottom; }
+    }
+    .chain-bolt { width: 13px; height: 13px; top: -3px; }
+    .hang.hang-1 { margin-bottom: 68px; }
+    @keyframes hangSwing {
+        0%, 100% { transform: rotate(-2deg); }
+        50%      { transform: rotate(2deg); }
+    }
     .artifacts-grid { grid-template-columns: 1fr; }
     .partners-grid { grid-template-columns: 1fr; }
     .support-card { padding: 24px; min-height: 200px; }
@@ -1432,5 +1462,11 @@ ul { list-style: none; }
     .tilt::after { display: none; }
     .hero-card { animation: none; }
     .hero-orb { animation: none; }
+    .hang { animation: none; }
+    .chain {
+        animation: none;
+        /* Park the sheen off-screen so it never blocks the chain visually */
+        background-position: center -200px, center bottom;
+    }
     *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
