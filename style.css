@@ -1022,15 +1022,19 @@ ul { list-style: none; }
 .hang {
     display: inline-block;
     position: relative;
-    transform-origin: top center;
+    /* Pivot above the element at the bolt position so the bolt stays fixed
+       and the badge/CTA swings like a real pendant. The offset equals
+       (chain height + chain top gap + bolt offset) ≈ 132 + 4 + 5 = 141px. */
+    --hang-pivot: 141px;
+    transform-origin: center calc(-1 * var(--hang-pivot));
     will-change: transform;
 }
 .hang.hang-1 { margin-bottom: 110px; animation: hangSwing 7s ease-in-out infinite; }
 .hang.hang-2 { animation: hangSwing 6.2s ease-in-out -2.5s infinite; }
 
 @keyframes hangSwing {
-    0%, 100% { transform: rotate(-3deg); }
-    50%      { transform: rotate(3deg); }
+    0%, 100% { transform: rotate(-2.4deg); }
+    50%      { transform: rotate(2.4deg); }
 }
 
 /* Chain — heavy industrial links (stadium-shaped, alternating orientation).
@@ -1062,6 +1066,8 @@ ul { list-style: none; }
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.75));
     animation: chainSheen 4.2s ease-in-out infinite;
 }
+/* Stagger the sheen between the two chains so they don't shine in unison */
+.hang.hang-2 .chain { animation: chainSheen 5.1s ease-in-out -1.7s infinite; }
 
 @keyframes chainSheen {
     0%, 100% { background-position: center -40px, center bottom; }
@@ -1090,6 +1096,24 @@ ul { list-style: none; }
         0 0 12px rgba(200,205,215,0.35);
     pointer-events: none;
     z-index: 3;
+    animation: boltPulse 6s ease-in-out infinite;
+}
+.hang.hang-2 .chain-bolt { animation: boltPulse 6s ease-in-out -3s infinite; }
+@keyframes boltPulse {
+    0%, 100% {
+        box-shadow:
+            0 3px 4px rgba(0,0,0,0.8),
+            inset 0 1.5px 0.5px rgba(255,255,255,0.75),
+            inset 0 -1.5px 1.5px rgba(0,0,0,0.55),
+            0 0 10px rgba(200,205,215,0.30);
+    }
+    50% {
+        box-shadow:
+            0 3px 4px rgba(0,0,0,0.8),
+            inset 0 1.5px 0.5px rgba(255,255,255,0.85),
+            inset 0 -1.5px 1.5px rgba(0,0,0,0.55),
+            0 0 16px rgba(225,229,235,0.55);
+    }
 }
 /* Cross-slot (looks like a screw/rivet head) */
 .chain-bolt::before {
@@ -1418,6 +1442,7 @@ ul { list-style: none; }
         50%      { background-position: center 104px, center bottom; }
     }
     .chain-bolt { width: 15px; height: 15px; top: -4px; }
+    .hang { --hang-pivot: 112px; }
     .hang.hang-1 { margin-bottom: 84px; }
 }
 
@@ -1444,10 +1469,11 @@ ul { list-style: none; }
         50%      { background-position: center 88px, center bottom; }
     }
     .chain-bolt { width: 13px; height: 13px; top: -3px; }
+    .hang { --hang-pivot: 95px; }
     .hang.hang-1 { margin-bottom: 68px; }
     @keyframes hangSwing {
-        0%, 100% { transform: rotate(-2deg); }
-        50%      { transform: rotate(2deg); }
+        0%, 100% { transform: rotate(-1.8deg); }
+        50%      { transform: rotate(1.8deg); }
     }
     .artifacts-grid { grid-template-columns: 1fr; }
     .partners-grid { grid-template-columns: 1fr; }
@@ -1468,5 +1494,6 @@ ul { list-style: none; }
         /* Park the sheen off-screen so it never blocks the chain visually */
         background-position: center -200px, center bottom;
     }
+    .chain-bolt, .hang.hang-2 .chain-bolt { animation: none; }
     *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
