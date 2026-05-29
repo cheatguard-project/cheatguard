@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Туториал — CheatGuard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .tutorial-header { text-align: center; padding: 120px 24px 60px; }
+        .tutorial-title { font-family: var(--serif); font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 900; margin-bottom: 24px; line-height: 1; }
+        .tutorial-desc { font-size: 1.1rem; color: var(--grey); max-width: 600px; margin: 0 auto; line-height: 1.6; }
+        .back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--grey); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; position: absolute; top: 40px; left: 40px; z-index: 10; }
+        .back-link:hover { color: white; }
+        
+        .step-card {
+            background: var(--bg3); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border); border-radius: 16px;
+            padding: 40px; margin-bottom: 32px; max-width: 800px; margin-left: auto; margin-right: auto;
+            position: relative;
+        }
+        .step-card:hover { border-color: var(--border2); }
+        .step-num {
+            position: absolute; top: -20px; left: -20px;
+            width: 50px; height: 50px; background: white; color: black;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-family: var(--serif); font-size: 1.5rem; font-weight: 900;
+            box-shadow: 0 10px 20px rgba(255,255,255,0.2);
+        }
+        .step-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 16px; color: white; }
+        .step-text { font-size: 1rem; color: var(--grey); line-height: 1.8; margin-bottom: 24px; }
+        .step-text strong { color: white; }
+        .step-img-placeholder {
+            width: 100%; height: 200px; border-radius: 8px;
+            background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--grey2); font-family: var(--mono); font-size: 0.9rem;
+            margin-top: 20px;
+        }
+        .shell-section { margin-top: 80px; }
+        .shell-section-title { text-align: center; font-family: var(--serif); font-size: 2.5rem; margin-bottom: 40px; }
+    </style>
+</head>
+<body>
+    <div class="noise"></div>
+
+    <a href="index.html" class="back-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Вернуться на главную
+    </a>
+
+    <header class="tutorial-header">
+        <h1 class="tutorial-title">Как запустить <em>терминал</em></h1>
+        <p class="tutorial-desc">Для успешной проверки ПК на читы необходимо запускать консоль строго от имени администратора. Следуйте нашей подробной инструкции.</p>
+    </header>
+
+    <div class="container">
+        <!-- PowerShell -->
+        <div class="shell-section">
+            <h2 class="shell-section-title">Запуск PowerShell</h2>
+            
+            <div class="step-card">
+                <div class="step-num">1</div>
+                <h3 class="step-title">Откройте меню «Пуск»</h3>
+                <p class="step-text">Нажмите на кнопку с логотипом Windows (обычно в левом нижнем углу экрана) или нажмите клавишу <strong>Windows (Win)</strong> на вашей клавиатуре.</p>
+            </div>
+
+            <div class="step-card">
+                <div class="step-num">2</div>
+                <h3 class="step-title">Впишите название программы</h3>
+                <p class="step-text">Не нажимая больше ничего, просто начните печатать на клавиатуре слово <strong>PowerShell</strong>. Система сама начнет поиск и покажет результаты.</p>
+                <div class="step-img-placeholder">[ Иллюстрация: Ввод "PowerShell" в поиске Windows ]</div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-num">3</div>
+                <h3 class="step-title">Запуск от имени Администратора</h3>
+                <p class="step-text">В результатах поиска вы увидите "Windows PowerShell". <strong>Не кликайте по нему левой кнопкой мыши!</strong> Нажмите по нему <strong>правой кнопкой мыши</strong> и в появившемся контекстном меню выберите пункт <strong>«Запуск от имени администратора»</strong>.</p>
+                <p class="step-text"><em>Альтернативный способ:</em> В правой части меню поиска (если у вас Windows 10/11) уже есть кнопка «Запуск от имени администратора». Можете нажать на нее левой кнопкой.</p>
+                <div class="step-img-placeholder">[ Иллюстрация: Клик ПКМ -> Запуск от имени администратора ]</div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-num">4</div>
+                <h3 class="step-title">Подтвердите разрешение (UAC)</h3>
+                <p class="step-text">Появится окно Контроля учетных записей с вопросом: "Разрешить этому приложению вносить изменения на вашем устройстве?". Обязательно нажмите <strong>«Да»</strong>.</p>
+                <p class="step-text">Откроется синее окно (или черное, в зависимости от настроек) — это и есть PowerShell. Если в заголовке окна написано "Администратор: Windows PowerShell", вы все сделали верно!</p>
+            </div>
+        </div>
+
+        <!-- CMD -->
+        <div class="shell-section" style="margin-bottom: 120px;">
+            <h2 class="shell-section-title">Запуск Командной строки (CMD)</h2>
+            
+            <div class="step-card">
+                <div class="step-num">1</div>
+                <h3 class="step-title">Откройте меню «Пуск»</h3>
+                <p class="step-text">Так же, как и в случае с PowerShell, нажмите на кнопку <strong>Windows</strong> на клавиатуре или на иконку в левом нижнем углу.</p>
+            </div>
+
+            <div class="step-card">
+                <div class="step-num">2</div>
+                <h3 class="step-title">Впишите "cmd"</h3>
+                <p class="step-text">Начните вводить на английской раскладке три буквы: <strong>cmd</strong>. В поиске появится приложение "Командная строка".</p>
+            </div>
+
+            <div class="step-card">
+                <div class="step-num">3</div>
+                <h3 class="step-title">Запуск от имени Администратора</h3>
+                <p class="step-text">Нажмите <strong>правой кнопкой мыши</strong> по "Командная строка" и выберите <strong>«Запуск от имени администратора»</strong>.</p>
+            </div>
+
+            <div class="step-card">
+                <div class="step-num">4</div>
+                <h3 class="step-title">Готово!</h3>
+                <p class="step-text">Согласитесь в окне с предупреждением (кнопка "Да"). Откроется черное окно. Убедитесь, что в самом верху окна (в заголовке) написано слово "Администратор". Теперь вы можете вводить команды.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

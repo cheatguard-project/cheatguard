@@ -573,6 +573,59 @@ ul { list-style: none; }
 /* Commands list */
 .commands-list {
     display: flex; flex-direction: column; gap: 8px;
+    min-height: 200px;
+}
+
+.cmd-empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 80px 20px; text-align: center;
+    animation: fadeIn 0.5s var(--ease) both;
+}
+.cmd-empty-radar {
+    position: relative; width: 120px; height: 120px; margin-bottom: 24px;
+    display: flex; align-items: center; justify-content: center;
+}
+.radar-circle {
+    position: absolute; inset: 0;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 50%;
+    animation: radarPulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.radar-circle:nth-child(2) { animation-delay: 1s; }
+.radar-circle:nth-child(3) { animation-delay: 2s; }
+
+.radar-sweep {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 70%, rgba(255,255,255,0.3) 100%);
+    animation: radarSpin 2s linear infinite;
+    -webkit-mask-image: radial-gradient(circle, transparent 20%, black 100%);
+            mask-image: radial-gradient(circle, transparent 20%, black 100%);
+}
+
+.radar-icon {
+    position: relative; z-index: 2; width: 32px; height: 32px; color: rgba(255,255,255,0.5);
+    animation: radarBounce 2s ease-in-out infinite;
+}
+
+@keyframes radarPulse {
+    0% { transform: scale(0.5); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+@keyframes radarSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+@keyframes radarBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.cmd-empty-state h3 {
+    font-family: var(--serif); font-size: 1.5rem; margin-bottom: 8px; color: white;
+}
+.cmd-empty-state p {
+    font-size: 0.9rem; color: var(--grey); max-width: 300px;
 }
 
 /* Command card */
@@ -615,6 +668,10 @@ ul { list-style: none; }
     font-family: var(--mono);
     font-size: 0.7rem; color: var(--grey2);
     min-width: 24px;
+}
+.cmd-shell-icon {
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
 }
 .cmd-title-text {
     font-size: 0.95rem; font-weight: 600; color: white;
@@ -669,6 +726,21 @@ ul { list-style: none; }
     line-height: 1.6;
     transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
 }
+.cmd-code::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+.cmd-code::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.02);
+    border-radius: 4px;
+}
+.cmd-code::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 4px;
+}
+.cmd-code::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.25);
+}
 .cmd-code-wrap:hover .cmd-code {
     background: rgba(255,255,255,0.04);
     border-color: rgba(255,255,255,0.2);
@@ -701,20 +773,11 @@ ul { list-style: none; }
     opacity: 0;
     transition: opacity 0.3s var(--ease);
 }
-.art-card::after {
-    content: '';
-    position: absolute; bottom: -80px; right: -80px;
-    width: 160px; height: 160px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,255,255,0.04), transparent 70%);
-    transition: all 0.5s var(--ease);
-}
 .art-card:hover {
     border-color: var(--border2);
     box-shadow: 0 20px 50px rgba(0,0,0,0.45);
 }
 .art-card:hover::before { opacity: 1; }
-.art-card:hover::after { transform: scale(1.5); opacity: 0.8; }
 
 .art-num {
     font-family: var(--mono);
@@ -758,6 +821,44 @@ ul { list-style: none; }
 .faq-section { background: transparent; }
 
 .faq-container { max-width: 800px; }
+
+.tutorial-banner {
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    padding: 24px; margin-bottom: 32px;
+    text-decoration: none; color: inherit;
+    transition: all 0.4s var(--ease);
+    position: relative; overflow: hidden;
+}
+.tutorial-banner:hover {
+    border-color: rgba(255,255,255,0.4);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.tutorial-banner-content {
+    display: flex; align-items: center; gap: 20px;
+}
+.tutorial-icon-wrap {
+    width: 52px; height: 52px; border-radius: 12px;
+    background: rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    color: white; flex-shrink: 0;
+}
+.tutorial-icon-wrap svg { width: 24px; height: 24px; }
+.tutorial-text h3 {
+    font-family: var(--serif); font-size: 1.3rem; margin-bottom: 6px;
+}
+.tutorial-text p {
+    font-size: 0.9rem; color: var(--grey); line-height: 1.5; margin: 0;
+}
+.tutorial-banner-arrow {
+    color: rgba(255,255,255,0.5);
+    transition: transform 0.3s var(--ease), color 0.3s var(--ease);
+}
+.tutorial-banner:hover .tutorial-banner-arrow {
+    transform: translateX(6px); color: white;
+}
 
 .faq-list { display: flex; flex-direction: column; gap: 8px; }
 
@@ -820,6 +921,14 @@ ul { list-style: none; }
     text-align: center;
 }
 .footer .brand { font-size: 1.1rem; }
+.footer-links {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 0.85rem; color: var(--grey); margin: 8px 0;
+}
+.footer-links a {
+    transition: color 0.2s var(--ease);
+}
+.footer-links a:hover { color: white; text-decoration: underline; }
 .footer-disclaimer {
     font-size: 0.8rem; color: var(--grey2);
     max-width: 400px;
@@ -1043,97 +1152,26 @@ ul { list-style: none; }
     position: absolute;
     left: 50%;
     bottom: calc(100% + 4px);
-    width: 28px;
+    width: 1px;
     height: 132px;
     transform: translateX(-50%);
     pointer-events: none;
-    background-image:
-        /* sheen pass — animated bright highlight that travels down the chain */
-        linear-gradient(180deg,
-            transparent 0%,
-            rgba(255,255,255,0) 30%,
-            rgba(255,255,255,0.55) 50%,
-            rgba(255,255,255,0) 70%,
-            transparent 100%),
-        /* base chain SVG — alternating vertical and horizontal stadium links */
-        url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 168' fill='none'%3E%3Cdefs%3E%3ClinearGradient id='m' x1='0' x2='1' y1='0' y2='0'%3E%3Cstop offset='0' stop-color='%230b0c0f'/%3E%3Cstop offset='0.22' stop-color='%23545862'/%3E%3Cstop offset='0.42' stop-color='%23c9cdd5'/%3E%3Cstop offset='0.55' stop-color='%23ffffff'/%3E%3Cstop offset='0.7' stop-color='%23a8acb5'/%3E%3Cstop offset='0.86' stop-color='%23414550'/%3E%3Cstop offset='1' stop-color='%2306070a'/%3E%3C/linearGradient%3E%3ClinearGradient id='h' x1='0' x2='1' y1='0' y2='0'%3E%3Cstop offset='0' stop-color='%23ffffff' stop-opacity='0'/%3E%3Cstop offset='0.42' stop-color='%23ffffff' stop-opacity='0.85'/%3E%3Cstop offset='0.58' stop-color='%23ffffff' stop-opacity='0.85'/%3E%3Cstop offset='1' stop-color='%23ffffff' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg stroke-linecap='round' stroke-linejoin='round'%3E%3C!-- vertical link 1 --%3E%3Crect x='9.5' y='4' width='9' height='20' rx='4.5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='9.5' y='4' width='9' height='20' rx='4.5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- horizontal link 2 --%3E%3Crect x='3' y='19' width='22' height='10' rx='5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='3' y='19' width='22' height='10' rx='5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- v3 --%3E%3Crect x='9.5' y='24' width='9' height='20' rx='4.5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='9.5' y='24' width='9' height='20' rx='4.5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- h4 --%3E%3Crect x='3' y='39' width='22' height='10' rx='5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='3' y='39' width='22' height='10' rx='5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- v5 --%3E%3Crect x='9.5' y='44' width='9' height='20' rx='4.5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='9.5' y='44' width='9' height='20' rx='4.5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- h6 --%3E%3Crect x='3' y='59' width='22' height='10' rx='5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='3' y='59' width='22' height='10' rx='5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- v7 --%3E%3Crect x='9.5' y='64' width='9' height='20' rx='4.5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='9.5' y='64' width='9' height='20' rx='4.5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- h8 --%3E%3Crect x='3' y='79' width='22' height='10' rx='5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='3' y='79' width='22' height='10' rx='5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- v9 --%3E%3Crect x='9.5' y='84' width='9' height='20' rx='4.5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='9.5' y='84' width='9' height='20' rx='4.5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- h10 --%3E%3Crect x='3' y='99' width='22' height='10' rx='5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='3' y='99' width='22' height='10' rx='5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- v11 --%3E%3Crect x='9.5' y='104' width='9' height='20' rx='4.5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='9.5' y='104' width='9' height='20' rx='4.5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- h12 --%3E%3Crect x='3' y='119' width='22' height='10' rx='5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='3' y='119' width='22' height='10' rx='5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- v13 --%3E%3Crect x='9.5' y='124' width='9' height='20' rx='4.5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='9.5' y='124' width='9' height='20' rx='4.5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- h14 --%3E%3Crect x='3' y='139' width='22' height='10' rx='5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='3' y='139' width='22' height='10' rx='5' stroke='url(%23h)' stroke-width='1'/%3E%3C!-- v15 --%3E%3Crect x='9.5' y='144' width='9' height='20' rx='4.5' stroke='url(%23m)' stroke-width='3.2'/%3E%3Crect x='9.5' y='144' width='9' height='20' rx='4.5' stroke='url(%23h)' stroke-width='1'/%3E%3C/g%3E%3C/svg%3E");
-    background-repeat: no-repeat, no-repeat;
-    background-position: center top, center bottom;
-    background-size: 28px 64px, 28px 168px;
-    background-blend-mode: overlay, normal;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 12%, #000 38%);
-            mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 12%, #000 38%);
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.75));
-    animation: chainSheen 4.2s ease-in-out infinite;
-}
-/* Stagger the sheen between the two chains so they don't shine in unison */
-.hang.hang-2 .chain { animation: chainSheen 5.1s ease-in-out -1.7s infinite; }
-
-@keyframes chainSheen {
-    0%, 100% { background-position: center -40px, center bottom; }
-    50%      { background-position: center 130px, center bottom; }
+    background: linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.4) 100%);
+    z-index: -1;
 }
 
-/* Bolt / rivet — bigger hex-screw head anchoring the heavy chain */
+/* Bolt / rivet — small elegant dot */
 .chain-bolt {
     position: absolute;
-    top: -5px;
+    top: -4px;
     left: 50%;
     transform: translateX(-50%);
-    width: 18px; height: 18px;
+    width: 6px; height: 6px;
     border-radius: 50%;
-    background:
-        radial-gradient(circle at 32% 26%,
-            #ffffff 0%,
-            #e1e4ea 18%,
-            #969ba5 48%,
-            #4a4e57 78%,
-            #15171b 100%);
-    box-shadow:
-        0 3px 4px rgba(0,0,0,0.8),
-        inset 0 1.5px 0.5px rgba(255,255,255,0.75),
-        inset 0 -1.5px 1.5px rgba(0,0,0,0.55),
-        0 0 12px rgba(200,205,215,0.35);
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 8px rgba(255,255,255,0.5);
     pointer-events: none;
     z-index: 3;
-    animation: boltPulse 6s ease-in-out infinite;
-}
-.hang.hang-2 .chain-bolt { animation: boltPulse 6s ease-in-out -3s infinite; }
-@keyframes boltPulse {
-    0%, 100% {
-        box-shadow:
-            0 3px 4px rgba(0,0,0,0.8),
-            inset 0 1.5px 0.5px rgba(255,255,255,0.75),
-            inset 0 -1.5px 1.5px rgba(0,0,0,0.55),
-            0 0 10px rgba(200,205,215,0.30);
-    }
-    50% {
-        box-shadow:
-            0 3px 4px rgba(0,0,0,0.8),
-            inset 0 1.5px 0.5px rgba(255,255,255,0.85),
-            inset 0 -1.5px 1.5px rgba(0,0,0,0.55),
-            0 0 16px rgba(225,229,235,0.55);
-    }
-}
-/* Cross-slot (looks like a screw/rivet head) */
-.chain-bolt::before {
-    content: '';
-    position: absolute;
-    inset: 3px;
-    border-radius: 50%;
-    background:
-        linear-gradient(90deg, transparent 42%, rgba(0,0,0,0.55) 46%, rgba(0,0,0,0.55) 54%, transparent 58%),
-        linear-gradient(0deg, transparent 42%, rgba(0,0,0,0.45) 46%, rgba(0,0,0,0.45) 54%, transparent 58%);
-}
-/* Specular highlight */
-.chain-bolt::after {
-    content: '';
-    position: absolute;
-    top: 2px; left: 3px;
-    width: 5px; height: 3.5px;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at center, rgba(255,255,255,0.9), transparent 70%);
-    transform: rotate(-25deg);
 }
 
 /* When user hovers the hanging element, suspend the swing for a moment */
@@ -1433,15 +1471,11 @@ ul { list-style: none; }
 
     /* Slimmer chain on tablet-ish widths */
     .chain {
-        width: 22px;
+        width: 1px;
         height: 104px;
-        background-size: 22px 52px, 22px 132px;
+        background: linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.4) 100%);
     }
-    @keyframes chainSheen {
-        0%, 100% { background-position: center -34px, center bottom; }
-        50%      { background-position: center 104px, center bottom; }
-    }
-    .chain-bolt { width: 15px; height: 15px; top: -4px; }
+    .chain-bolt { width: 6px; height: 6px; top: -4px; }
     .hang { --hang-pivot: 112px; }
     .hang.hang-1 { margin-bottom: 84px; }
 }
@@ -1460,15 +1494,11 @@ ul { list-style: none; }
 
     /* Compact chain on small phones */
     .chain {
-        width: 18px;
+        width: 1px;
         height: 88px;
-        background-size: 18px 44px, 18px 112px;
+        background: linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.4) 100%);
     }
-    @keyframes chainSheen {
-        0%, 100% { background-position: center -28px, center bottom; }
-        50%      { background-position: center 88px, center bottom; }
-    }
-    .chain-bolt { width: 13px; height: 13px; top: -3px; }
+    .chain-bolt { width: 5px; height: 5px; top: -3px; }
     .hang { --hang-pivot: 95px; }
     .hang.hang-1 { margin-bottom: 68px; }
     @keyframes hangSwing {
@@ -1491,8 +1521,6 @@ ul { list-style: none; }
     .hang { animation: none; }
     .chain {
         animation: none;
-        /* Park the sheen off-screen so it never blocks the chain visually */
-        background-position: center -200px, center bottom;
     }
     .chain-bolt, .hang.hang-2 .chain-bolt { animation: none; }
     *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

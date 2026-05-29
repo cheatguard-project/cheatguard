@@ -217,10 +217,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         if (filtered.length === 0) {
-            var emptyP = document.createElement('p');
-            emptyP.style.cssText = 'color: var(--grey); text-align: center; padding: 40px;';
-            emptyP.textContent = (window.i18n[currentLang] && window.i18n[currentLang]['cmd_empty']) || 'No commands found.';
-            commandsList.appendChild(emptyP);
+            var emptyWrap = document.createElement('div');
+            emptyWrap.className = 'cmd-empty-state';
+            
+            var title = (window.i18n[currentLang] && window.i18n[currentLang]['cmd_empty_title']) || 'Ничего не найдено';
+            var desc = (window.i18n[currentLang] && window.i18n[currentLang]['cmd_empty_desc']) || 'Попробуйте изменить параметры поиска или категорию.';
+
+            emptyWrap.innerHTML = `
+                <div class="cmd-empty-radar">
+                    <div class="radar-circle"></div>
+                    <div class="radar-circle"></div>
+                    <div class="radar-circle"></div>
+                    <div class="radar-sweep"></div>
+                    <svg class="radar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </div>
+                <h3>${title}</h3>
+                <p>${desc}</p>
+            `;
+            commandsList.appendChild(emptyWrap);
             return;
         }
 
@@ -246,6 +263,14 @@ document.addEventListener('DOMContentLoaded', function() {
             numSpan.className = 'cmd-num';
             numSpan.textContent = numStr;
 
+            var iconSpan = document.createElement('span');
+            iconSpan.className = 'cmd-shell-icon';
+            if (cmd.shell === 'powershell') {
+                iconSpan.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--powershell-color, #4ea8de)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>';
+            } else {
+                iconSpan.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cmd-color, #ffffff)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><polyline points="9 9 12 12 9 15"></polyline></svg>';
+            }
+
             var titleSpan = document.createElement('span');
             titleSpan.className = 'cmd-title-text';
             titleSpan.textContent = title;
@@ -255,6 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
             badgeSpan.textContent = catName;
 
             headerLeft.appendChild(numSpan);
+            headerLeft.appendChild(iconSpan);
             headerLeft.appendChild(titleSpan);
             headerLeft.appendChild(badgeSpan);
 
