@@ -21,6 +21,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var cmdSearchInput = document.getElementById('cmdSearch');
     var cmdSearchWrap = cmdSearchInput ? cmdSearchInput.closest('.cmd-search') : null;
     var cmdSearchClear = document.getElementById('cmdSearchClear');
+    var heroCommandText = document.getElementById('heroCommandText');
+    var heroCommandIndex = document.getElementById('heroCommandIndex');
+    var heroCommandTitle = document.getElementById('heroCommandTitle');
     var toast = document.getElementById('toast');
     var statCmds = document.getElementById('statCmds');
 
@@ -47,41 +50,39 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // Palette of cool dusty smoke tones (HSL)
+    // Calm smoke palette: low-saturation, low-opacity light fog.
     var smokePalette = [
-        { h: 215, s: 45, l: 68 }, // blue
-        { h: 235, s: 35, l: 66 }, // periwinkle
-        { h: 260, s: 30, l: 62 }, // soft violet
-        { h: 195, s: 40, l: 66 }, // pale cyan
-        { h: 280, s: 28, l: 60 }, // dusty purple
-        { h: 205, s: 35, l: 70 }  // sky
+        { h: 196, s: 22, l: 66 },
+        { h: 214, s: 20, l: 62 },
+        { h: 232, s: 16, l: 58 },
+        { h: 176, s: 18, l: 62 },
+        { h: 255, s: 14, l: 56 }
     ];
 
     function createBlob(seed) {
         var p = smokePalette[Math.floor(Math.random() * smokePalette.length)];
-        var isLarge = Math.random() < 0.45;
+        var isLarge = Math.random() < 0.36;
         return {
             x: Math.random() * window.innerWidth,
             y: Math.random() * window.innerHeight,
-            baseR: isLarge ? (200 + Math.random() * 260) : (70 + Math.random() * 140),
-            vx: (Math.random() - 0.5) * 0.22,
-            vy: (Math.random() - 0.5) * 0.18 - 0.02, // gentle upward bias
+            baseR: isLarge ? (260 + Math.random() * 260) : (110 + Math.random() * 150),
+            vx: (Math.random() - 0.5) * 0.08,
+            vy: (Math.random() - 0.5) * 0.06 - 0.01,
             h: p.h, s: p.s, l: p.l,
-            baseOp: isLarge ? (0.04 + Math.random() * 0.05) : (0.06 + Math.random() * 0.06),
+            baseOp: isLarge ? (0.018 + Math.random() * 0.025) : (0.024 + Math.random() * 0.028),
             swirl: Math.random() * Math.PI * 2,
-            swirlSpeed: 0.0006 + Math.random() * 0.0016,
-            swirlAmp: 25 + Math.random() * 70,
-            // Secondary swirl for irregular wispy shape
+            swirlSpeed: 0.00025 + Math.random() * 0.00075,
+            swirlAmp: 18 + Math.random() * 46,
             swirl2: Math.random() * Math.PI * 2,
-            swirl2Speed: 0.001 + Math.random() * 0.0024,
-            swirl2Amp: 8 + Math.random() * 24,
+            swirl2Speed: 0.00045 + Math.random() * 0.001,
+            swirl2Amp: 6 + Math.random() * 18,
             pulse: Math.random() * Math.PI * 2,
-            pulseSpeed: 0.0008 + Math.random() * 0.0022,
-            squish: 0.75 + Math.random() * 0.5 // non-circular shape
+            pulseSpeed: 0.00028 + Math.random() * 0.0009,
+            squish: 0.55 + Math.random() * 0.38
         };
     }
 
-    var BLOB_COUNT = 14;
+    var BLOB_COUNT = 10;
     for (var i = 0; i < BLOB_COUNT; i++) blobs.push(createBlob(i));
 
     function animateBlobs() {
@@ -105,20 +106,20 @@ document.addEventListener('DOMContentLoaded', function() {
             // Compound swirl offset (two frequencies → organic wandering)
             var ox = Math.cos(b.swirl) * b.swirlAmp + Math.cos(b.swirl2) * b.swirl2Amp;
             var oy = Math.sin(b.swirl * 1.3) * b.swirlAmp + Math.sin(b.swirl2 * 1.7) * b.swirl2Amp;
-            var pulseFactor = 1 + Math.sin(b.pulse) * 0.22;
+            var pulseFactor = 1 + Math.sin(b.pulse) * 0.10;
             var r = b.baseR * pulseFactor;
-            var op = b.baseOp * (0.72 + Math.sin(b.pulse * 0.7) * 0.28);
+            var op = b.baseOp * (0.78 + Math.sin(b.pulse * 0.7) * 0.18);
             var cx = b.x + ox, cy = b.y + oy;
 
             // Save + apply a slight squish for non-circular smoke shape
             ctx.save();
             ctx.translate(cx, cy);
-            ctx.rotate(b.swirl * 0.4);
-            ctx.scale(1, b.squish);
+            ctx.rotate(b.swirl * 0.22);
+            ctx.scale(1.35, b.squish);
             var grd = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
             grd.addColorStop(0,    'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,' + op + ')');
-            grd.addColorStop(0.35, 'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,' + (op * 0.55) + ')');
-            grd.addColorStop(0.7,  'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,' + (op * 0.18) + ')');
+            grd.addColorStop(0.42, 'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,' + (op * 0.42) + ')');
+            grd.addColorStop(0.78, 'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,' + (op * 0.10) + ')');
             grd.addColorStop(1,    'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,0)');
             ctx.fillStyle = grd;
             ctx.beginPath();
@@ -200,6 +201,79 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    function getI18n(key, fallback) {
+        return (window.i18n[currentLang] && window.i18n[currentLang][key]) || fallback;
+    }
+
+    function startHeroCommandTyping() {
+        if (!heroCommandText || !window.commandsData) return;
+
+        var items = window.commandsData
+            .filter(function(cmd) { return cmd.shell === 'powershell'; })
+            .slice(0, 4);
+        if (!items.length) return;
+
+        var itemIndex = 0;
+        var charIndex = 0;
+        var deleting = false;
+
+        function renderMeta() {
+            var item = items[itemIndex];
+            if (heroCommandIndex) {
+                heroCommandIndex.textContent = String(itemIndex + 1).padStart(2, '0') + ' / 04';
+            }
+            if (heroCommandTitle) {
+                heroCommandTitle.textContent = item.title[currentLang] || item.title.en || '';
+            }
+        }
+
+        function tick() {
+            var item = items[itemIndex];
+            var code = item.code;
+            renderMeta();
+            heroCommandText.textContent = code.slice(0, charIndex);
+
+            if (prefersReducedMotion) {
+                heroCommandText.textContent = code;
+                return;
+            }
+
+            var delay;
+            if (!deleting && charIndex < code.length) {
+                charIndex += 1;
+                delay = code.charAt(charIndex - 1) === ' ' ? 42 : 20 + Math.random() * 18;
+            } else if (!deleting) {
+                deleting = true;
+                delay = 1700;
+            } else if (charIndex > 0) {
+                charIndex -= Math.max(1, Math.floor(code.length / 90));
+                delay = 8;
+            } else {
+                deleting = false;
+                itemIndex = (itemIndex + 1) % items.length;
+                delay = 420;
+            }
+            window.setTimeout(tick, delay);
+        }
+
+        tick();
+    }
+
+    function updateCategoryCounts() {
+        catTabs.forEach(function(tab) {
+            var cat = tab.getAttribute('data-cat');
+            var count = window.commandsData.filter(function(cmd) {
+                return cmd.shell === activeShell && (cat === 'all' || cmd.category === cat);
+            }).length;
+            var existing = tab.querySelector('.cat-count');
+            if (existing) existing.remove();
+            var countSpan = document.createElement('span');
+            countSpan.className = 'cat-count';
+            countSpan.textContent = count;
+            tab.appendChild(countSpan);
+        });
+    }
+
     // --- Render Commands ---
     function renderCommands() {
         commandsList.innerHTML = '';
@@ -215,6 +289,8 @@ document.addEventListener('DOMContentLoaded', function() {
             var code = (cmd.code || '').toLowerCase();
             return title.indexOf(q) !== -1 || desc.indexOf(q) !== -1 || code.indexOf(q) !== -1;
         });
+
+        updateCategoryCounts();
 
         if (filtered.length === 0) {
             var emptyWrap = document.createElement('div');
@@ -319,8 +395,17 @@ document.addEventListener('DOMContentLoaded', function() {
             codeDiv.textContent = cmd.code;
 
             codeWrap.appendChild(codeDiv);
+            var metaRow = document.createElement('div');
+            metaRow.className = 'cmd-meta-row';
+
+            var copyMeta = document.createElement('span');
+            copyMeta.className = 'cmd-copy-hint';
+            copyMeta.textContent = getI18n('cmd_copy_hint', 'Нажмите код, чтобы скопировать');
+
+            metaRow.appendChild(copyMeta);
             bodyInner.appendChild(descDiv);
             bodyInner.appendChild(codeWrap);
+            bodyInner.appendChild(metaRow);
             body.appendChild(bodyInner);
 
             card.appendChild(header);
@@ -619,4 +704,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     setLanguage('ru');
     setupTilt(); // bind static tilt tiles (partners, support)
+    startHeroCommandTyping();
 });
