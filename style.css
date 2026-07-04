@@ -41,13 +41,25 @@
     /* --- Organic / "living substance" tokens ---
        Единая метафора: тёмная атмосфера + живой дым + желейная органика.
        Все параметры стиля (углы, easing желе, глов, дым) собраны здесь. */
-    --jelly-dx: 46px;                /* диагональный сдвиг toast по X */
-    --jelly-dy: 58px;                /* диагональный сдвиг toast по Y */
-    --jelly-in-dur: 780ms;           /* желейное появление */
-    --jelly-out-dur: 460ms;          /* втягивание */
+    --jelly-dx: 52px;                /* диагональный сдвиг toast по X (усилен) */
+    --jelly-dy: 66px;                /* диагональный сдвиг toast по Y (усилен) */
+    --jelly-in-dur: 560ms;           /* появление: 780 → 560 (−28%) */
+    --jelly-out-dur: 340ms;          /* втягивание: 460 → 340 (−26%) */
     --glow-size: 280px;              /* диаметр cursor-glow (420 / 1.5) */
     --glow-blur: 1.5px;              /* blur глова (2 / ~1.5) */
     --glow-core-alpha: 0.14;         /* ядро ярче: компенсация меньшего размера */
+
+    /* --- Chrome text (задача 5) ---
+       Единственный "спокойный" элемент интерфейса: медленная волна металла.
+       НЕ ускорять вместе с остальными анимациями. */
+    --chrome-dur: 7s;
+    --chrome-grad: linear-gradient(110deg,
+        #63676e 0%, #f2f4f8 16%, #b7bcc5 30%, #ffffff 45%,
+        #83878f 60%, #e6e8ed 78%, #63676e 100%);
+
+    /* --- Word reveal (задача 8) --- */
+    --word-stagger: 50ms;            /* задержка между словами */
+    --word-blur: 6px;                /* стартовый blur */
 }
 
 html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
@@ -202,26 +214,84 @@ ul { list-style: none; }
     50% { opacity: 1; transform: scale(1.3); }
 }
 
-/* Nav menu */
+/* Nav menu — минимализм (задача 9, вариант А "тонкий бар"):
+   uppercase-микротипографика, широкий трекинг, лёгкий вес,
+   больше воздуха между пунктами. */
 .nav-menu {
-    display: flex; align-items: center; gap: clamp(18px, 2.6vw, 34px);
+    display: flex; align-items: center; gap: clamp(26px, 3.4vw, 44px);
 }
 .nav-link {
-    font-size: 0.875rem; font-weight: 500; color: var(--grey);
+    font-size: 0.72rem; font-weight: 450;
+    letter-spacing: 2.2px; text-transform: uppercase;
+    color: var(--grey);
     transition: color 0.25s var(--ease);
     position: relative;
+    padding: 4px 0;
 }
 .nav-link::after {
     content: '';
-    position: absolute; bottom: -4px; left: 0;
+    position: absolute; bottom: -2px; left: 0;
     width: 0; height: 1px;
     background: white;
     transition: width 0.3s var(--ease);
 }
-.nav-link:hover { color: white; }
+/* Scan-line (задача 11): при hover по пункту проходит тонкая
+   диагональная светящаяся полоса — "система сканирует пункт".
+   Монохром, premium: никакой "матрицы". */
+.nav-link::before {
+    content: '';
+    position: absolute; top: -4px; bottom: -4px;
+    left: -8px; width: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.9), transparent);
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+    opacity: 0;
+    transform: skewX(-18deg);
+    pointer-events: none;
+}
+.nav-link:hover::before {
+    animation: navScan 0.55s var(--ease-out-expo);
+}
+@keyframes navScan {
+    0%   { opacity: 0; left: -8px; }
+    15%  { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { opacity: 0; left: calc(100% + 8px); }
+}
+/* Глитч RGB-split на 1px в момент "сканирования" — едва заметный */
+.nav-link:hover {
+    color: white;
+    animation: navGlitch 0.55s steps(2, jump-none);
+}
+@keyframes navGlitch {
+    0%, 100% { text-shadow: none; }
+    20% { text-shadow: 1px 0 rgba(120,180,255,0.35), -1px 0 rgba(255,120,140,0.3); }
+    40% { text-shadow: -1px 0 rgba(120,180,255,0.28), 1px 0 rgba(255,120,140,0.24); }
+    60% { text-shadow: 0.5px 0 rgba(120,180,255,0.18), -0.5px 0 rgba(255,120,140,0.15); }
+    80% { text-shadow: none; }
+}
 .nav-link:hover::after { width: 100%; }
 .nav-link.active { color: white; }
 .nav-link.active::after { width: 100%; }
+
+/* Скан бренда при загрузке страницы — один проход линии по логотипу */
+.brand { position: relative; overflow: visible; }
+.brand::before {
+    content: '';
+    position: absolute; top: -6px; bottom: -6px;
+    left: 0; width: 2px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.85), transparent);
+    box-shadow: 0 0 14px rgba(255,255,255,0.45);
+    opacity: 0;
+    transform: skewX(-18deg);
+    pointer-events: none;
+    animation: brandScan 1.1s var(--ease-out-expo) 0.9s;
+}
+@keyframes brandScan {
+    0%   { opacity: 0; left: 0; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { opacity: 0; left: 100%; }
+}
 
 /* Nav right */
 .nav-right { display: flex; align-items: center; gap: 16px; }
@@ -239,33 +309,76 @@ ul { list-style: none; }
     letter-spacing: 0.5px;
 }
 .lang-current:hover { border-color: var(--border2); color: white; }
+/* Раскрытие по тому же диагонально-желейному принципу, что и toast:
+   меню "выныривает" из-под кнопки (сверху-справа → вниз-влево),
+   объём сохраняется (scaleX/scaleY в противофазе), 3 фазы затухания. */
 .lang-dropdown {
     position: absolute; top: calc(100% + 8px); right: 0;
     background: var(--surface);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--border2);
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 6px;
     display: flex; flex-direction: column; gap: 2px;
-    min-width: 140px;
+    min-width: 150px;
     opacity: 0; visibility: hidden;
-    transform: translateY(-6px);
-    transition: all 0.25s var(--ease);
+    transform-origin: 85% -10%; /* желе растёт из точки кнопки */
+    transform: translate(10px, -14px) skew(-6deg, -3deg) scale(0.6, 1.15);
     box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    transition: visibility 0s 0.2s, opacity 0.15s var(--ease);
+    pointer-events: none;
 }
 .lang-switcher.open .lang-dropdown {
-    opacity: 1; visibility: visible; transform: translateY(0);
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transition: none;
+    animation: langJellyIn 0.42s linear both;
+}
+@keyframes langJellyIn {
+    0%   { opacity: 0; transform: translate(10px, -14px) skew(-6deg, -3deg) scale(0.6, 1.15); border-radius: 20px 8px 22px 8px; }
+    34%  { opacity: 1; transform: translate(-4px, 5px) skew(3.5deg, 1.8deg) scale(1.09, 0.88); border-radius: 8px 18px 8px 18px; }
+    62%  { transform: translate(1.5px, -2px) skew(-1.6deg, -0.8deg) scale(0.965, 1.05); border-radius: 15px 10px 16px 10px; }
+    100% { opacity: 1; transform: translate(0, 0) skew(0, 0) scale(1, 1); border-radius: 12px; }
 }
 .lang-opt {
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; gap: 9px;
     font-size: 0.85rem; color: var(--grey);
     background: transparent; border: none;
     padding: 8px 12px; border-radius: 6px;
-    transition: all 0.2s var(--ease);
+    transition: background 0.2s var(--ease), color 0.2s var(--ease);
     text-align: left;
+}
+/* Stagger пунктов: каждый язык выныривает чуть позже предыдущего */
+.lang-switcher.open .lang-opt {
+    animation: langOptIn 0.38s var(--ease-out-expo) both;
+    animation-delay: calc(0.06s + var(--li, 0) * 0.055s);
+}
+.lang-opt:nth-child(1) { --li: 0; }
+.lang-opt:nth-child(2) { --li: 1; }
+.lang-opt:nth-child(3) { --li: 2; }
+.lang-opt:nth-child(4) { --li: 3; }
+@keyframes langOptIn {
+    from { opacity: 0; transform: translate(8px, -8px); filter: blur(3px); }
+    to   { opacity: 1; transform: translate(0, 0); filter: blur(0); }
 }
 .lang-opt:hover, .lang-opt.active {
     background: rgba(255,255,255,0.06); color: white;
 }
+
+/* SVG-флаги (fix задачи 7в): emoji-флаги на Windows рендерятся как
+   буквенные коды "PL"/"RU" — нет нативного emoji-шрифта с флагами.
+   Инлайн-SVG рендерится одинаково на всех ОС. */
+.lang-flag {
+    display: inline-flex;
+    width: 18px; height: 13px;
+    border-radius: 2.5px;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
+}
+.lang-flag svg { width: 100%; height: 100%; display: block; }
 
 /* Burger */
 .burger {
@@ -303,14 +416,52 @@ ul { list-style: none; }
     width: min(100%, 980px);
 }
 
-/* Shimmer text effect */
-.hero-title-line {
-    background: linear-gradient(90deg, #fff 0%, #aaa 40%, #fff 60%, #aaa 100%);
-    background-size: 200% 100%;
+/* ============================================================
+   CHROME TEXT (задача 5) — медленное металлическое переливание.
+   Применимо к ЛЮБОМУ тексту: <span class="chrome-text">…</span>.
+   Техника: многостопный градиент шире текста (250%) + анимация
+   background-position. Псевдоэлемент ::after повторяет текст
+   (attr data-text) со сдвинутой фазой и blur(1.5px) — размытый
+   двойник имитирует рассеянное отражение, металл не плоский.
+   ============================================================ */
+.chrome-text {
+    position: relative;
+    display: inline-block;
+    background: var(--chrome-grad);
+    background-size: 250% 100%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    animation: slideUp 0.8s var(--ease) 0.15s both, shimmer 6s ease-in-out infinite 1.2s;
+    animation: chromeFlow var(--chrome-dur) ease-in-out infinite;
+}
+.chrome-text::after {
+    content: attr(data-text);
+    position: absolute; inset: 0;
+    background: var(--chrome-grad);
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: blur(1.5px);
+    opacity: 0.45;
+    animation: chromeFlow var(--chrome-dur) ease-in-out infinite;
+    animation-delay: calc(var(--chrome-dur) * -0.12); /* сдвиг фазы отражения */
+    pointer-events: none;
+}
+@keyframes chromeFlow {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Shimmer text effect */
+.hero-title-line {
+    background: var(--chrome-grad);
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: slideUp 0.8s var(--ease) 0.15s both, chromeFlow var(--chrome-dur) ease-in-out infinite 1.2s;
 }
 @keyframes shimmer {
     0%, 100% { background-position: 0% 50%; }
@@ -359,11 +510,12 @@ ul { list-style: none; }
     display: inline-block;
     transform: translateY(115%) rotate(4deg);
     transform-origin: left bottom;
-    animation: wordRise 0.85s var(--ease-out-expo) both, shimmer 6s ease-in-out infinite;
+    /* Появление быстрое (в тон желе), переливание — медленный хром */
+    animation: wordRise 0.85s var(--ease-out-expo) both, chromeFlow var(--chrome-dur) ease-in-out infinite;
     animation-delay: var(--wd, 0.15s), 1.6s;
     will-change: transform;
-    background: linear-gradient(90deg, #fff 0%, #aaa 40%, #fff 60%, #aaa 100%);
-    background-size: 200% 100%;
+    background: var(--chrome-grad);
+    background-size: 250% 100%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -1186,28 +1338,31 @@ ul { list-style: none; }
     animation: toastJellyOut var(--jelly-out-dur) cubic-bezier(0.5, 0, 0.75, 0.2) both;
 }
 
+/* Усилено (задача 6): длительность −28%, компенсация — резкий старт:
+   к 30% времени желе уже пролетело весь путь (раньше было 38%),
+   overshoot увеличен в ~1.5 раза, деформации выразительнее. */
 @keyframes toastJellyIn {
-    /* фаза 1: вылет по диагонали, масса растянута вдоль движения */
+    /* фаза 1: резкий вылет, масса сильно растянута вдоль движения */
     0% {
         opacity: 0;
-        transform: translate(var(--jelly-dx), var(--jelly-dy)) skew(-9deg, -4deg) scale(0.72, 1.18);
-        border-radius: 26px 16px 30px 12px;
+        transform: translate(var(--jelly-dx), var(--jelly-dy)) skew(-13deg, -6deg) scale(0.62, 1.30);
+        border-radius: 30px 14px 34px 10px;
     }
-    /* фаза 2: подлёт с перехлёстом за точку покоя */
-    38% {
+    /* фаза 2: перехлёст за точку покоя — заметно дальше и раньше */
+    30% {
         opacity: 1;
-        transform: translate(calc(var(--jelly-dx) * -0.14), calc(var(--jelly-dy) * -0.16)) skew(5deg, 2.5deg) scale(1.10, 0.86);
-        border-radius: 12px 24px 10px 26px;
+        transform: translate(calc(var(--jelly-dx) * -0.22), calc(var(--jelly-dy) * -0.25)) skew(7.5deg, 3.8deg) scale(1.17, 0.79);
+        border-radius: 10px 28px 8px 30px;
     }
-    /* фаза 3: отскок назад — желе "шлёпнулось" и колыхнулось */
-    62% {
-        transform: translate(calc(var(--jelly-dx) * 0.05), calc(var(--jelly-dy) * 0.06)) skew(-2.5deg, -1.2deg) scale(0.955, 1.06);
-        border-radius: 20px 14px 22px 13px;
+    /* фаза 3: сильный отскок назад */
+    56% {
+        transform: translate(calc(var(--jelly-dx) * 0.09), calc(var(--jelly-dy) * 0.11)) skew(-4deg, -2deg) scale(0.93, 1.10);
+        border-radius: 22px 12px 24px 12px;
     }
-    /* фаза 4: дожатие формы — затухающее колебание */
-    82% {
-        transform: translate(calc(var(--jelly-dx) * -0.015), calc(var(--jelly-dy) * -0.02)) skew(1deg, 0.5deg) scale(1.015, 0.985);
-        border-radius: 15px 18px 15px 18px;
+    /* фаза 4: дожатие — колебание всё ещё видимое */
+    80% {
+        transform: translate(calc(var(--jelly-dx) * -0.03), calc(var(--jelly-dy) * -0.035)) skew(1.6deg, 0.8deg) scale(1.03, 0.975);
+        border-radius: 14px 19px 14px 19px;
     }
     100% {
         opacity: 1;
@@ -1225,15 +1380,15 @@ ul { list-style: none; }
         transform: translate(0, 0) skew(0, 0) scale(1, 1);
         border-radius: 16px;
     }
-    26% {
+    24% {
         opacity: 1;
-        transform: translate(calc(var(--jelly-dx) * -0.10), calc(var(--jelly-dy) * -0.12)) skew(3.5deg, 1.8deg) scale(1.07, 0.90);
-        border-radius: 10px 24px 10px 24px;
+        transform: translate(calc(var(--jelly-dx) * -0.16), calc(var(--jelly-dy) * -0.19)) skew(5deg, 2.6deg) scale(1.12, 0.85);
+        border-radius: 8px 28px 8px 28px;
     }
     100% {
         opacity: 0;
-        transform: translate(calc(var(--jelly-dx) * 1.1), calc(var(--jelly-dy) * 1.15)) skew(-11deg, -5deg) scale(0.6, 1.22);
-        border-radius: 30px 12px 32px 10px;
+        transform: translate(calc(var(--jelly-dx) * 1.15), calc(var(--jelly-dy) * 1.2)) skew(-15deg, -7deg) scale(0.52, 1.32);
+        border-radius: 34px 10px 36px 8px;
     }
 }
 
@@ -1365,13 +1520,36 @@ ul { list-style: none; }
 .partner-category-card.reveal:nth-child(4) { transition-delay: 0.3s; }
 .partner-category-card.reveal:nth-child(5) { transition-delay: 0.4s; }
 
-/* Section head reveal — title slides, label draws in */
+/* Section head reveal (задача 8) — многослойный:
+   1) диагональная clip-path-маска открывает заголовок (тот же
+      диагональный принцип, что в желе-анимациях — единый язык);
+   2) внутри — каждое слово выезжает по Y с blur-in (6px → 0),
+      stagger 50мс, easing тот же ease-out-expo.
+   Триггер — IntersectionObserver (класс .visible), не scroll-listener. */
 .section-head.reveal .section-title {
-    clip-path: inset(0 0 100% 0);
-    transition: clip-path 0.9s var(--ease-out-expo) 0.15s;
+    clip-path: polygon(-10% -20%, 130% -20%, 130% -20%, -10% -20%);
+    transition: clip-path 0.9s var(--ease-out-expo) 0.1s;
 }
 .section-head.reveal.visible .section-title {
-    clip-path: inset(0 0 -10% 0);
+    /* нижняя грань наклонена — маска открывается по диагонали */
+    clip-path: polygon(-10% -20%, 130% -20%, 130% 140%, -10% 120%);
+}
+.st-word {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(0.55em);
+    filter: blur(var(--word-blur));
+    will-change: transform, filter;
+}
+.section-head.reveal.visible .st-word {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+    transition:
+        opacity 0.6s var(--ease-out-expo),
+        transform 0.6s var(--ease-out-expo),
+        filter 0.6s var(--ease-out-expo);
+    transition-delay: calc(0.1s + var(--sw, 0) * var(--word-stagger));
 }
 
 /* ============================================================
@@ -1919,6 +2097,13 @@ ul { list-style: none; }
     .toast { transform: none; transition: opacity 0.2s ease; }
     .toast.show { animation: none; opacity: 1; }
     .toast.hide { animation: none; opacity: 0; }
+    .chrome-text, .chrome-text::after, .hero-word-inner, .hero-title-line { animation-iteration-count: 1; }
+    .lang-switcher.open .lang-dropdown { animation: none; transform: none; }
+    .lang-switcher.open .lang-opt { animation: none; opacity: 1; }
+    .nav-link:hover { animation: none; }
+    .nav-link:hover::before, .brand::before { animation: none; opacity: 0; }
+    .st-word { opacity: 1; transform: none; filter: none; }
+    .section-head.reveal .section-title { clip-path: none; transition: none; }
     .tilt { transition: border-color 0.3s, box-shadow 0.3s; transform: none !important; }
     .tilt::after { display: none; }
     .hero-orb { animation: none; }

@@ -47,15 +47,15 @@
             <div class="nav-right">
                 <!-- Language Switcher -->
                 <div class="lang-switcher" id="langSwitcher">
-                    <button class="lang-current" id="langCurrent">
-                        <span id="langFlag">🇷🇺</span>
+                    <button class="lang-current" id="langCurrent" aria-haspopup="listbox" aria-label="Язык сайта">
+                        <span class="lang-flag" id="langFlag"><svg viewBox="0 0 18 13" xmlns="http://www.w3.org/2000/svg"><rect width="18" height="4.33" fill="#fff"/><rect y="4.33" width="18" height="4.33" fill="#0039A6"/><rect y="8.66" width="18" height="4.34" fill="#D52B1E"/></svg></span>
                         <span id="langCode">RU</span>
                         <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round"/></svg>
                     </button>
-                    <div class="lang-dropdown" id="langDropdown">
-                        <button class="lang-opt active" data-lang="ru"><span>🇷🇺</span> Русский</button>
-                        <button class="lang-opt" data-lang="en"><span>🇬🇧</span> English</button>
-                        <button class="lang-opt" data-lang="pl"><span>🇵🇱</span> Polski</button>
+                    <div class="lang-dropdown" id="langDropdown" role="listbox">
+                        <button class="lang-opt active" data-lang="ru" role="option"><span class="lang-flag"><svg viewBox="0 0 18 13" xmlns="http://www.w3.org/2000/svg"><rect width="18" height="4.33" fill="#fff"/><rect y="4.33" width="18" height="4.33" fill="#0039A6"/><rect y="8.66" width="18" height="4.34" fill="#D52B1E"/></svg></span> Русский</button>
+                        <button class="lang-opt" data-lang="en" role="option"><span class="lang-flag"><svg viewBox="0 0 18 13" xmlns="http://www.w3.org/2000/svg"><rect width="18" height="13" fill="#012169"/><path d="M0 0l18 13M18 0L0 13" stroke="#fff" stroke-width="2.4"/><path d="M0 0l18 13M18 0L0 13" stroke="#C8102E" stroke-width="1"/><path d="M9 0v13M0 6.5h18" stroke="#fff" stroke-width="4"/><path d="M9 0v13M0 6.5h18" stroke="#C8102E" stroke-width="2.2"/></svg></span> English</button>
+                        <button class="lang-opt" data-lang="pl" role="option"><span class="lang-flag"><svg viewBox="0 0 18 13" xmlns="http://www.w3.org/2000/svg"><rect width="18" height="6.5" fill="#fff"/><rect y="6.5" width="18" height="6.5" fill="#DC143C"/></svg></span> Polski</button>
                     </div>
                 </div>
                 <button class="burger" id="burger" aria-label="Menu">

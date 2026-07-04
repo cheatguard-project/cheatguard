@@ -44,10 +44,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Силовое поле курсора: позиция сглаживается (lerp), чтобы дым реагировал
     // с лёгкой инерцией, а не дёргался за мышью.
     var smokeMouse = { x: -9999, y: -9999, tx: -9999, ty: -9999, vx: 0, vy: 0, px: -9999, py: -9999 };
-    var SMOKE_CURSOR_RADIUS = 340;   // радиус действия поля, px
-    var SMOKE_REPEL = 0.055;         // сила расталкивания от курсора
-    var SMOKE_SWIRL = 0.045;         // сила закручивания (перпендикулярная составляющая)
-    var SMOKE_DRAG_BOOST = 0.06;     // увлечение дыма за быстрым движением мыши
+    // Усилено (задача 6): реакция резче, но вихрь остаётся плавным —
+    // резкость даёт быстрый lerp и большие силы, плавность — вязкость.
+    var SMOKE_CURSOR_RADIUS = 360;   // радиус действия поля, px
+    var SMOKE_REPEL = 0.095;         // сила расталкивания (0.055 → 0.095)
+    var SMOKE_SWIRL = 0.08;          // сила закручивания (0.045 → 0.08)
+    var SMOKE_DRAG_BOOST = 0.11;     // увлечение за мышью (0.06 → 0.11)
 
     if (!isCoarsePointer && !prefersReducedMotion) {
         document.addEventListener('mousemove', function(e) {
@@ -158,8 +160,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Инерционное сглаживание позиции курсора + оценка его скорости
         smokeMouse.px = smokeMouse.x; smokeMouse.py = smokeMouse.y;
-        smokeMouse.x += (smokeMouse.tx - smokeMouse.x) * 0.12;
-        smokeMouse.y += (smokeMouse.ty - smokeMouse.y) * 0.12;
+        smokeMouse.x += (smokeMouse.tx - smokeMouse.x) * 0.2; // 0.12 → 0.2: реакция резче
+        smokeMouse.y += (smokeMouse.ty - smokeMouse.y) * 0.2;
         smokeMouse.vx = smokeMouse.x - smokeMouse.px;
         smokeMouse.vy = smokeMouse.y - smokeMouse.py;
 
@@ -241,8 +243,11 @@ document.addEventListener('DOMContentLoaded', function() {
         currentLang = lang;
         document.documentElement.lang = lang;
 
-        var flagMap = { 'ru': '🇷🇺', 'en': '🇬🇧', 'pl': '🇵🇱' };
-        document.getElementById('langFlag').textContent = flagMap[lang];
+        // SVG-флаги вместо emoji (на Windows emoji-флаги рендерятся как "RU"/"PL").
+        // Копируем разметку флага из соответствующего пункта dropdown.
+        var srcOpt = document.querySelector('.lang-opt[data-lang="' + lang + '"] .lang-flag');
+        var flagEl = document.getElementById('langFlag');
+        if (srcOpt && flagEl) flagEl.innerHTML = srcOpt.innerHTML;
         document.getElementById('langCode').textContent = lang.toUpperCase();
 
         langOptions.forEach(function(opt) {
@@ -268,7 +273,28 @@ document.addEventListener('DOMContentLoaded', function() {
         renderArtifacts();
         renderFAQ();
         splitHeroTitle();
+        splitSectionTitles();
         langSwitcher.classList.remove('open');
+    }
+
+    // --- Section titles: word-by-word scroll reveal (задача 8) ---
+    // Слова оборачиваются в .st-word с индексом --sw; сама анимация
+    // стартует по классу .visible от IntersectionObserver (не scroll-listener).
+    function splitSectionTitles() {
+        if (prefersReducedMotion) return;
+        document.querySelectorAll('.section-head.reveal .section-title').forEach(function(title) {
+            var text = title.textContent.trim();
+            if (!text) return;
+            title.textContent = '';
+            text.split(/\s+/).forEach(function(word, i) {
+                if (i > 0) title.appendChild(document.createTextNode(' '));
+                var span = document.createElement('span');
+                span.className = 'st-word';
+                span.textContent = word;
+                span.style.setProperty('--sw', i);
+                title.appendChild(span);
+            });
+        });
     }
 
     // --- Hero title: word-by-word masked reveal (re-runs on language change) ---
@@ -310,9 +336,59 @@ document.addEventListener('DOMContentLoaded', function() {
     langOptions.forEach(function(opt) {
         opt.addEventListener('click', function(e) {
             e.stopPropagation();
-            setLanguage(opt.getAttribute('data-lang'));
+            var lang = opt.getAttribute('data-lang');
+            setLanguage(lang);
+            // Ручной выбор — фиксируем, автоопределение больше не перезапишет
+            try { localStorage.setItem('cg_lang', lang); } catch (err) { /* private mode */ }
         });
     });
+
+    // --- Автоопределение языка (задача 7) ---
+    // Поддерживаемые языки сайта: ru, en, pl.
+    // Маппинг стран → языки:
+    //   ru: RU, BY, KZ, KG, UZ, TJ, AM, AZ, GE, MD, UA
+    //   pl: PL
+    //   en: всё остальное (fallback)
+    // Порядок: localStorage → navigator.language (мгновенно, без сети) →
+    // IP-геолокация в фоне (не блокирует рендер: сайт уже показан,
+    // язык подменяется только если отличается и юзер не выбрал вручную).
+    var GEO_LANG_MAP = {
+        RU: 'ru', BY: 'ru', KZ: 'ru', KG: 'ru', UZ: 'ru', TJ: 'ru',
+        AM: 'ru', AZ: 'ru', GE: 'ru', MD: 'ru', UA: 'ru',
+        PL: 'pl'
+    };
+    var SUPPORTED_LANGS = ['ru', 'en', 'pl'];
+
+    function detectInitialLang() {
+        // 1) сохранённый выбор
+        var stored = null;
+        try { stored = localStorage.getItem('cg_lang'); } catch (err) { /* noop */ }
+        if (stored && SUPPORTED_LANGS.indexOf(stored) !== -1) return { lang: stored, final: true };
+
+        // 2) язык браузера — мгновенный fallback без сети
+        var navLang = (navigator.language || 'en').slice(0, 2).toLowerCase();
+        var guess = SUPPORTED_LANGS.indexOf(navLang) !== -1 ? navLang : 'en';
+        return { lang: guess, final: false };
+    }
+
+    function refineLangByGeo() {
+        // Фоновая IP-геолокация; таймаут 4с, ошибки молча игнорируются
+        var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        if (controller) setTimeout(function() { controller.abort(); }, 4000);
+        fetch('https://ipapi.co/json/', controller ? { signal: controller.signal } : undefined)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                var country = (data && data.country_code || '').toUpperCase();
+                var lang = GEO_LANG_MAP[country] || 'en';
+                var manual = null;
+                try { manual = localStorage.getItem('cg_lang'); } catch (err) { /* noop */ }
+                // Не перетираем ручной выбор; меняем только если язык другой
+                if (!manual && lang !== currentLang) setLanguage(lang);
+                // Запоминаем результат автоопределения, чтобы не запрашивать повторно
+                if (!manual) { try { localStorage.setItem('cg_lang', lang); } catch (err) { /* noop */ } }
+            })
+            .catch(function() { /* сеть/лимит/adblock — остаёмся на fallback */ });
+    }
 
     function getI18n(key, fallback) {
         return (window.i18n[currentLang] && window.i18n[currentLang][key]) || fallback;
@@ -695,9 +771,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function showToast() {
         clearTimeout(toastTimeout);
         clearTimeout(toastHideTimeout);
-        // Джиттер амплитуды: базовые 46/58px ± ~18%
-        var jx = 46 + (Math.random() - 0.5) * 16;
-        var jy = 58 + (Math.random() - 0.5) * 20;
+        // Джиттер амплитуды: базовые 52/66px ± ~18% (синхронно с токенами)
+        var jx = 52 + (Math.random() - 0.5) * 18;
+        var jy = 66 + (Math.random() - 0.5) * 24;
         toast.style.setProperty('--jelly-dx', jx.toFixed(0) + 'px');
         toast.style.setProperty('--jelly-dy', jy.toFixed(0) + 'px');
         // Force reflow so the entrance + check + sparks animations replay on every call
@@ -879,7 +955,12 @@ document.addEventListener('DOMContentLoaded', function() {
         var partnerCount = document.querySelectorAll('.partner-list > li').length;
         if (partnerCount > 0) statPartners.textContent = partnerCount;
     }
-    setLanguage('ru');
+    // Язык: мгновенный рендер на localStorage/navigator.language,
+    // затем неблокирующее уточнение по IP-геолокации
+    var initialLang = detectInitialLang();
+    setLanguage(initialLang.lang);
+    if (!initialLang.final) refineLangByGeo();
+
     setupTilt(); // bind static tilt tiles (partners, support)
     setupScrollReveal(); // observe static reveals (section heads, partner cards)
     setupStatCounters();
