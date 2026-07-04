@@ -30,11 +30,37 @@ document.addEventListener('DOMContentLoaded', function() {
         cursorGlow.style.top = e.clientY + 'px';
     });
 
-    // --- Ambient drifting fog blobs (systemdlc-inspired) ---
+    // --- Interactive smoke (Canvas 2D particle field) ---
+    // Canvas 2D выбран вместо WebGL-шейдера сознательно: радиальные градиенты
+    // с низкой прозрачностью и screen-blending дают убедительный объёмный дым
+    // при ~15 формах на кадр (тривиальная нагрузка), без компиляции шейдеров,
+    // WebGL-контекста и лишних килобайт. WebGL оправдан от сотен тысяч частиц.
     var canvas = document.getElementById('particlesCanvas');
     var ctx = canvas.getContext('2d');
     var blobs = [];
     var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var isCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+    // Силовое поле курсора: позиция сглаживается (lerp), чтобы дым реагировал
+    // с лёгкой инерцией, а не дёргался за мышью.
+    var smokeMouse = { x: -9999, y: -9999, tx: -9999, ty: -9999, vx: 0, vy: 0, px: -9999, py: -9999 };
+    // Усилено (задача 6): реакция резче, но вихрь остаётся плавным —
+    // резкость даёт быстрый lerp и большие силы, плавность — вязкость.
+    var SMOKE_CURSOR_RADIUS = 360;   // радиус действия поля, px
+    var SMOKE_REPEL = 0.095;         // сила расталкивания (0.055 → 0.095)
+    var SMOKE_SWIRL = 0.08;          // сила закручивания (0.045 → 0.08)
+    var SMOKE_DRAG_BOOST = 0.11;     // увлечение за мышью (0.06 → 0.11)
+
+    if (!isCoarsePointer && !prefersReducedMotion) {
+        document.addEventListener('mousemove', function(e) {
+            smokeMouse.tx = e.clientX;
+            smokeMouse.ty = e.clientY;
+        }, { passive: true });
+        document.addEventListener('mouseleave', function() {
+            smokeMouse.tx = -9999;
+            smokeMouse.ty = -9999;
+        });
+    }
 
     function resizeCanvas() {
         var dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -59,14 +85,20 @@ document.addEventListener('DOMContentLoaded', function() {
     function createBlob(seed) {
         var p = smokePalette[Math.floor(Math.random() * smokePalette.length)];
         var isLarge = Math.random() < 0.36;
+        // depth: 0.35 (дальний слой) … 1 (ближний). Крупные формы — дальше:
+        // движутся медленнее, прозрачнее, слабее реагируют на курсор — параллакс.
+        var depth = isLarge ? (0.35 + Math.random() * 0.3) : (0.6 + Math.random() * 0.4);
         return {
             x: Math.random() * window.innerWidth,
             y: Math.random() * window.innerHeight,
             baseR: isLarge ? (260 + Math.random() * 260) : (110 + Math.random() * 150),
-            vx: (Math.random() - 0.5) * 0.08,
-            vy: (Math.random() - 0.5) * 0.06 - 0.01,
+            vx: (Math.random() - 0.5) * 0.08 * depth,
+            vy: ((Math.random() - 0.5) * 0.06 - 0.01) * depth,
+            /* скорость от силового поля курсора (затухающая) */
+            fx: 0, fy: 0,
+            depth: depth,
             h: p.h, s: p.s, l: p.l,
-            baseOp: isLarge ? (0.018 + Math.random() * 0.025) : (0.024 + Math.random() * 0.028),
+            baseOp: (isLarge ? (0.018 + Math.random() * 0.025) : (0.024 + Math.random() * 0.028)) * (0.6 + depth * 0.4),
             swirl: Math.random() * Math.PI * 2,
             swirlSpeed: 0.00025 + Math.random() * 0.00075,
             swirlAmp: 18 + Math.random() * 46,
@@ -79,11 +111,60 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    var BLOB_COUNT = 10;
+    // Адаптивное число форм: меньше на мобильных, автоснижение при низком FPS.
+    var BLOB_COUNT = isCoarsePointer ? 6 : 12;
     for (var i = 0; i < BLOB_COUNT; i++) blobs.push(createBlob(i));
 
-    function animateBlobs() {
+    var fpsSamples = 0, fpsAccum = 0, lastFrameTs = 0, fpsChecked = false;
+
+    // Сила взаимодействия курсора с дымом: внутри радиуса действует
+    // репеллер (расталкивание) + перпендикулярный вихрь (закручивание),
+    // сила затухает квадратично к краю поля. Быстрое движение мыши
+    // дополнительно "увлекает" дым за собой (drag).
+    function applyCursorForce(b) {
+        var dx = b.x - smokeMouse.x;
+        var dy = b.y - smokeMouse.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var radius = SMOKE_CURSOR_RADIUS * (0.6 + b.depth * 0.55);
+        if (dist > radius || dist < 0.001) return;
+        var t = 1 - dist / radius;
+        var falloff = t * t; // квадратичное затухание — мягкий край поля
+        var nx = dx / dist, ny = dy / dist;
+        var strength = falloff * b.depth;
+        // репеллер: от курсора наружу
+        b.fx += nx * SMOKE_REPEL * strength;
+        b.fy += ny * SMOKE_REPEL * strength;
+        // вихрь: перпендикуляр к радиусу → дым закручивается вокруг курсора
+        b.fx += -ny * SMOKE_SWIRL * strength;
+        b.fy += nx * SMOKE_SWIRL * strength;
+        // увлечение за скоростью мыши
+        b.fx += smokeMouse.vx * SMOKE_DRAG_BOOST * strength;
+        b.fy += smokeMouse.vy * SMOKE_DRAG_BOOST * strength;
+    }
+
+    function animateBlobs(ts) {
         var W = window.innerWidth, H = window.innerHeight;
+
+        // Адаптация под FPS: первые ~90 кадров замеряем; если в среднем
+        // ниже ~45 fps — убираем треть форм (сначала мелкие ближние).
+        if (!fpsChecked && lastFrameTs && ts) {
+            fpsAccum += ts - lastFrameTs;
+            fpsSamples += 1;
+            if (fpsSamples >= 90) {
+                fpsChecked = true;
+                var avgFrame = fpsAccum / fpsSamples;
+                if (avgFrame > 22) blobs.length = Math.max(4, Math.floor(blobs.length * 0.66));
+            }
+        }
+        lastFrameTs = ts || 0;
+
+        // Инерционное сглаживание позиции курсора + оценка его скорости
+        smokeMouse.px = smokeMouse.x; smokeMouse.py = smokeMouse.y;
+        smokeMouse.x += (smokeMouse.tx - smokeMouse.x) * 0.2; // 0.12 → 0.2: реакция резче
+        smokeMouse.y += (smokeMouse.ty - smokeMouse.y) * 0.2;
+        smokeMouse.vx = smokeMouse.x - smokeMouse.px;
+        smokeMouse.vy = smokeMouse.y - smokeMouse.py;
+
         ctx.clearRect(0, 0, W, H);
         // Additive blending for soft "light through fog" feel
         ctx.globalCompositeOperation = 'screen';
@@ -92,8 +173,14 @@ document.addEventListener('DOMContentLoaded', function() {
             b.swirl += b.swirlSpeed;
             b.swirl2 += b.swirl2Speed;
             b.pulse += b.pulseSpeed;
-            b.x += b.vx;
-            b.y += b.vy;
+
+            // силовое поле курсора → скорость с вязким затуханием
+            if (smokeMouse.tx > -9000) applyCursorForce(b);
+            b.fx *= 0.94; // вязкость: дым медленно "успокаивается"
+            b.fy *= 0.94;
+
+            b.x += b.vx + b.fx;
+            b.y += b.vy + b.fy;
             // wrap toroidally
             if (b.x < -b.baseR) b.x = W + b.baseR;
             else if (b.x > W + b.baseR) b.x = -b.baseR;
@@ -104,15 +191,18 @@ document.addEventListener('DOMContentLoaded', function() {
             var ox = Math.cos(b.swirl) * b.swirlAmp + Math.cos(b.swirl2) * b.swirl2Amp;
             var oy = Math.sin(b.swirl * 1.3) * b.swirlAmp + Math.sin(b.swirl2 * 1.7) * b.swirl2Amp;
             var pulseFactor = 1 + Math.sin(b.pulse) * 0.10;
-            var r = b.baseR * pulseFactor;
-            var op = b.baseOp * (0.78 + Math.sin(b.pulse * 0.7) * 0.18);
+            // Возмущение курсором слегка "раздувает" и подсвечивает дым
+            var agitation = Math.min(Math.sqrt(b.fx * b.fx + b.fy * b.fy) * 0.55, 0.35);
+            var r = b.baseR * (pulseFactor + agitation * 0.4);
+            var op = b.baseOp * (0.78 + Math.sin(b.pulse * 0.7) * 0.18) * (1 + agitation * 1.6);
             var cx = b.x + ox, cy = b.y + oy;
 
-            // Save + apply a slight squish for non-circular smoke shape
+            // Save + apply a slight squish for non-circular smoke shape;
+            // при возмущении форма вытягивается вдоль направления силы
             ctx.save();
             ctx.translate(cx, cy);
-            ctx.rotate(b.swirl * 0.22);
-            ctx.scale(1.35, b.squish);
+            ctx.rotate(agitation > 0.02 ? Math.atan2(b.fy, b.fx) : b.swirl * 0.22);
+            ctx.scale(1.35 + agitation * 0.5, b.squish);
             var grd = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
             grd.addColorStop(0,    'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,' + op + ')');
             grd.addColorStop(0.42, 'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,' + (op * 0.42) + ')');
@@ -153,8 +243,11 @@ document.addEventListener('DOMContentLoaded', function() {
         currentLang = lang;
         document.documentElement.lang = lang;
 
-        var flagMap = { 'ru': '🇷🇺', 'en': '🇬🇧', 'pl': '🇵🇱' };
-        document.getElementById('langFlag').textContent = flagMap[lang];
+        // SVG-флаги вместо emoji (на Windows emoji-флаги рендерятся как "RU"/"PL").
+        // Копируем разметку флага из соответствующего пункта dropdown.
+        var srcOpt = document.querySelector('.lang-opt[data-lang="' + lang + '"] .lang-flag');
+        var flagEl = document.getElementById('langFlag');
+        if (srcOpt && flagEl) flagEl.innerHTML = srcOpt.innerHTML;
         document.getElementById('langCode').textContent = lang.toUpperCase();
 
         langOptions.forEach(function(opt) {
@@ -179,7 +272,57 @@ document.addEventListener('DOMContentLoaded', function() {
         renderCommands();
         renderArtifacts();
         renderFAQ();
+        splitHeroTitle();
+        splitSectionTitles();
+        if (accessState) updateAccessBanner();
         langSwitcher.classList.remove('open');
+    }
+
+    // --- Section titles: word-by-word scroll reveal (задача 8) ---
+    // Слова оборачиваются в .st-word с индексом --sw; сама анимация
+    // стартует по классу .visible от IntersectionObserver (не scroll-listener).
+    function splitSectionTitles() {
+        if (prefersReducedMotion) return;
+        document.querySelectorAll('.section-head.reveal .section-title').forEach(function(title) {
+            var text = title.textContent.trim();
+            if (!text) return;
+            title.textContent = '';
+            text.split(/\s+/).forEach(function(word, i) {
+                if (i > 0) title.appendChild(document.createTextNode(' '));
+                var span = document.createElement('span');
+                span.className = 'st-word';
+                span.textContent = word;
+                span.style.setProperty('--sw', i);
+                title.appendChild(span);
+            });
+        });
+    }
+
+    // --- Hero title: word-by-word masked reveal (re-runs on language change) ---
+    function splitHeroTitle() {
+        var title = document.querySelector('.hero-title');
+        if (!title) return;
+        if (prefersReducedMotion) return;
+
+        var wordIndex = 0;
+        title.querySelectorAll('.hero-title-line').forEach(function(line) {
+            var text = line.textContent.trim();
+            if (!text) return;
+            line.textContent = '';
+            text.split(/\s+/).forEach(function(word, i) {
+                if (i > 0) line.appendChild(document.createTextNode(' '));
+                var outer = document.createElement('span');
+                outer.className = 'hero-word';
+                var inner = document.createElement('span');
+                inner.className = 'hero-word-inner';
+                inner.textContent = word;
+                inner.style.setProperty('--wd', (0.15 + wordIndex * 0.11) + 's');
+                outer.appendChild(inner);
+                line.appendChild(outer);
+                wordIndex += 1;
+            });
+        });
+        title.classList.add('split');
     }
 
     langBtn.addEventListener('click', function(e) {
@@ -194,9 +337,59 @@ document.addEventListener('DOMContentLoaded', function() {
     langOptions.forEach(function(opt) {
         opt.addEventListener('click', function(e) {
             e.stopPropagation();
-            setLanguage(opt.getAttribute('data-lang'));
+            var lang = opt.getAttribute('data-lang');
+            setLanguage(lang);
+            // Ручной выбор — фиксируем, автоопределение больше не перезапишет
+            try { localStorage.setItem('cg_lang', lang); } catch (err) { /* private mode */ }
         });
     });
+
+    // --- Автоопределение языка (задача 7) ---
+    // Поддерживаемые языки сайта: ru, en, pl.
+    // Маппинг стран → языки:
+    //   ru: RU, BY, KZ, KG, UZ, TJ, AM, AZ, GE, MD, UA
+    //   pl: PL
+    //   en: всё остальное (fallback)
+    // Порядок: localStorage → navigator.language (мгновенно, без сети) →
+    // IP-геолокация в фоне (не блокирует рендер: сайт уже показан,
+    // язык подменяется только если отличается и юзер не выбрал вручную).
+    var GEO_LANG_MAP = {
+        RU: 'ru', BY: 'ru', KZ: 'ru', KG: 'ru', UZ: 'ru', TJ: 'ru',
+        AM: 'ru', AZ: 'ru', GE: 'ru', MD: 'ru', UA: 'ru',
+        PL: 'pl'
+    };
+    var SUPPORTED_LANGS = ['ru', 'en', 'pl'];
+
+    function detectInitialLang() {
+        // 1) сохранённый выбор
+        var stored = null;
+        try { stored = localStorage.getItem('cg_lang'); } catch (err) { /* noop */ }
+        if (stored && SUPPORTED_LANGS.indexOf(stored) !== -1) return { lang: stored, final: true };
+
+        // 2) язык браузера — мгновенный fallback без сети
+        var navLang = (navigator.language || 'en').slice(0, 2).toLowerCase();
+        var guess = SUPPORTED_LANGS.indexOf(navLang) !== -1 ? navLang : 'en';
+        return { lang: guess, final: false };
+    }
+
+    function refineLangByGeo() {
+        // Фоновая IP-геолокация; таймаут 4с, ошибки молча игнорируются
+        var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        if (controller) setTimeout(function() { controller.abort(); }, 4000);
+        fetch('https://ipapi.co/json/', controller ? { signal: controller.signal } : undefined)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                var country = (data && data.country_code || '').toUpperCase();
+                var lang = GEO_LANG_MAP[country] || 'en';
+                var manual = null;
+                try { manual = localStorage.getItem('cg_lang'); } catch (err) { /* noop */ }
+                // Не перетираем ручной выбор; меняем только если язык другой
+                if (!manual && lang !== currentLang) setLanguage(lang);
+                // Запоминаем результат автоопределения, чтобы не запрашивать повторно
+                if (!manual) { try { localStorage.setItem('cg_lang', lang); } catch (err) { /* noop */ } }
+            })
+            .catch(function() { /* сеть/лимит/adblock — остаёмся на fallback */ });
+    }
 
     function getI18n(key, fallback) {
         return (window.i18n[currentLang] && window.i18n[currentLang][key]) || fallback;
@@ -257,6 +450,137 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // ============================================================
+    // ACCESS GATE — кодовое слово перед базой команд.
+    // Гость: PowerShell-команды 1–7. Кодовое слово: гостевой набор +
+    // "своя" команда + 4 случайные из закрытого пула. CMD-команды
+    // открыты всем. Выбор хранится в sessionStorage (на сессию).
+    // ============================================================
+    var ACCESS_CODES = { mont: 'c11', prol: 'c12', seno: 'c13', embr: 'c14' };
+    var GUEST_PS_IDS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7'];
+    var accessState = null; // { level: 'guest'|код, allowed: [ids] }
+
+    var accessGateEl = document.getElementById('accessGate');
+    var commandsWorkspace = document.getElementById('commandsWorkspace');
+    var gateForm = document.getElementById('gateForm');
+    var gateInput = document.getElementById('gateInput');
+    var gateStatus = document.getElementById('gateStatus');
+    var gateGuestBtn = document.getElementById('gateGuestBtn');
+    var accessBanner = document.getElementById('accessBanner');
+    var accessBannerText = document.getElementById('accessBannerText');
+    var accessResetBtn = document.getElementById('accessResetBtn');
+
+    function gateT(key) {
+        return (window.i18n[currentLang] && window.i18n[currentLang][key]) || (window.i18n['en'] && window.i18n['en'][key]) || key;
+    }
+
+    function computeAllowed(level) {
+        if (level === 'guest') return GUEST_PS_IDS.slice();
+        var allowed = GUEST_PS_IDS.slice();
+        allowed.push(ACCESS_CODES[level]);
+        // 4 случайные команды из оставшегося закрытого пула
+        var pool = window.commandsData
+            .filter(function(c) { return c.shell === 'powershell' && allowed.indexOf(c.id) === -1; })
+            .map(function(c) { return c.id; });
+        for (var i = pool.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+        }
+        return allowed.concat(pool.slice(0, 4));
+    }
+
+    function saveAccess(state) {
+        try { sessionStorage.setItem('cg_access', JSON.stringify(state)); } catch (err) { /* noop */ }
+    }
+
+    function loadAccess() {
+        try {
+            var raw = sessionStorage.getItem('cg_access');
+            if (!raw) return null;
+            var st = JSON.parse(raw);
+            if (st && st.allowed && (st.level === 'guest' || ACCESS_CODES[st.level])) return st;
+        } catch (err) { /* noop */ }
+        return null;
+    }
+
+    function updateAccessBanner() {
+        if (!accessBanner || !accessState) return;
+        if (accessState.level === 'guest') {
+            accessBanner.classList.add('guest');
+            accessBannerText.textContent = gateT('gate_banner_guest');
+        } else {
+            accessBanner.classList.remove('guest');
+            accessBannerText.textContent = gateT('gate_banner_code') + ' "' + accessState.level.toUpperCase() + '" — ' + accessState.allowed.length + ' PS';
+        }
+    }
+
+    function unlockWorkspace(animate) {
+        updateAccessBanner();
+        if (animate && !prefersReducedMotion) {
+            accessGateEl.classList.add('unlocking');
+            setTimeout(function() {
+                accessGateEl.hidden = true;
+                commandsWorkspace.hidden = false;
+                renderCommands();
+            }, 580);
+        } else {
+            accessGateEl.hidden = true;
+            commandsWorkspace.hidden = false;
+            renderCommands();
+        }
+    }
+
+    function grantAccess(level, animate) {
+        accessState = { level: level, allowed: computeAllowed(level) };
+        saveAccess(accessState);
+        unlockWorkspace(animate);
+    }
+
+    if (gateForm) {
+        gateForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var code = gateInput.value.trim().toLowerCase();
+            if (ACCESS_CODES[code]) {
+                gateStatus.className = 'gate-status ok';
+                gateStatus.textContent = gateT('gate_ok');
+                setTimeout(function() { grantAccess(code, true); }, 450);
+            } else {
+                gateStatus.className = 'gate-status err';
+                gateStatus.textContent = gateT('gate_err');
+                var panel = accessGateEl.querySelector('.gate-panel');
+                panel.classList.remove('shake');
+                void panel.offsetWidth;
+                panel.classList.add('shake');
+                gateInput.select();
+            }
+        });
+    }
+    if (gateGuestBtn) {
+        gateGuestBtn.addEventListener('click', function() { grantAccess('guest', true); });
+    }
+    if (accessResetBtn) {
+        accessResetBtn.addEventListener('click', function() {
+            try { sessionStorage.removeItem('cg_access'); } catch (err) { /* noop */ }
+            accessState = null;
+            commandsWorkspace.hidden = true;
+            accessGateEl.hidden = false;
+            accessGateEl.classList.remove('unlocking');
+            gateStatus.className = 'gate-status';
+            gateStatus.textContent = '';
+            gateInput.value = '';
+        });
+    }
+
+    // Восстановление доступа из сессии
+    accessState = loadAccess();
+    if (accessState) unlockWorkspace(false);
+
+    function isCommandLocked(cmd) {
+        if (cmd.shell !== 'powershell') return false;
+        if (!accessState) return true;
+        return accessState.allowed.indexOf(cmd.id) === -1;
+    }
+
     // --- Render Commands ---
     function renderCommands() {
         commandsList.innerHTML = '';
@@ -301,6 +625,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         filtered.forEach(function(cmd, idx) {
+            // Заблокированная карточка-тизер: заголовок размыт, замок вместо стрелки
+            if (isCommandLocked(cmd)) {
+                var lockedCard = document.createElement('div');
+                lockedCard.className = 'cmd-card locked';
+                lockedCard.style.animationDelay = (idx * 0.05) + 's';
+                var lockedNum = (idx + 1).toString().padStart(2, '0');
+                var lockedCatKey = 'cat_' + cmd.category;
+                var lockedCatName = (window.i18n[currentLang] && window.i18n[currentLang][lockedCatKey]) || cmd.category;
+                var lockedTitle = cmd.title[currentLang] || cmd.title['en'];
+                lockedCard.innerHTML =
+                    '<div class="cmd-header">' +
+                        '<div class="cmd-header-left">' +
+                            '<span class="cmd-num">' + lockedNum + '</span>' +
+                            '<span class="cmd-title-text"></span>' +
+                            '<span class="cmd-badge">' + lockedCatName + '</span>' +
+                        '</div>' +
+                        '<svg class="cmd-lock-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>' +
+                    '</div>';
+                lockedCard.querySelector('.cmd-title-text').textContent = lockedTitle;
+                lockedCard.setAttribute('title', gateT('gate_locked_hint'));
+                commandsList.appendChild(lockedCard);
+                return;
+            }
+
             var card = document.createElement('div');
             card.className = 'cmd-card tilt';
             card.style.animationDelay = (idx * 0.05) + 's';
@@ -571,15 +919,93 @@ document.addEventListener('DOMContentLoaded', function() {
         setupTilt();
     }
 
-    // --- Toast ---
-    var toastTimeout;
+    // --- Toast: "диагональное желе" ---
+    // Появление = keyframe toastJellyIn, скрытие = toastJellyOut (класс .hide).
+    // При каждом вызове слегка варьируем амплитуду диагонали, чтобы повторные
+    // уведомления не выглядели механически одинаковыми (stagger-эффект).
+    var toastTimeout, toastHideTimeout;
     function showToast() {
         clearTimeout(toastTimeout);
+        clearTimeout(toastHideTimeout);
+        // Джиттер амплитуды: базовые 52/66px ± ~18% (синхронно с токенами)
+        var jx = 52 + (Math.random() - 0.5) * 18;
+        var jy = 66 + (Math.random() - 0.5) * 24;
+        toast.style.setProperty('--jelly-dx', jx.toFixed(0) + 'px');
+        toast.style.setProperty('--jelly-dy', jy.toFixed(0) + 'px');
         // Force reflow so the entrance + check + sparks animations replay on every call
-        toast.classList.remove('show');
+        toast.classList.remove('show', 'hide');
         void toast.offsetWidth;
         toast.classList.add('show');
-        toastTimeout = setTimeout(function() { toast.classList.remove('show'); }, 2400);
+        toastTimeout = setTimeout(function() {
+            toast.classList.remove('show');
+            toast.classList.add('hide');
+            toastHideTimeout = setTimeout(function() { toast.classList.remove('hide'); }, 500);
+        }, 2400);
+    }
+
+    // --- Scroll progress bar ---
+    function setupScrollProgress() {
+        var bar = document.getElementById('scrollProgress');
+        if (!bar || prefersReducedMotion) return;
+        var ticking = false;
+        function update() {
+            ticking = false;
+            var max = document.documentElement.scrollHeight - window.innerHeight;
+            var p = max > 0 ? Math.min(window.scrollY / max, 1) : 0;
+            bar.style.transform = 'scaleX(' + p.toFixed(4) + ')';
+        }
+        window.addEventListener('scroll', function() {
+            if (!ticking) { ticking = true; requestAnimationFrame(update); }
+        }, { passive: true });
+        update();
+    }
+
+    // --- Magnetic CTA buttons: subtle pull toward the cursor ---
+    function setupMagneticButtons() {
+        if (prefersReducedMotion) return;
+        document.querySelectorAll('.cta-btn').forEach(function(btn) {
+            var strength = 0.22;
+            btn.addEventListener('mouseenter', function() {
+                btn.style.transition = '';
+            });
+            btn.addEventListener('mousemove', function(e) {
+                var rect = btn.getBoundingClientRect();
+                var dx = e.clientX - (rect.left + rect.width / 2);
+                var dy = e.clientY - (rect.top + rect.height / 2);
+                btn.style.transform = 'translate(' + (dx * strength).toFixed(1) + 'px, ' + (dy * strength).toFixed(1) + 'px)';
+            });
+            btn.addEventListener('mouseleave', function() {
+                btn.style.transition = 'transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                btn.style.transform = 'translate(0, 0)';
+            });
+        });
+    }
+
+    // --- Scrollspy: highlight the nav link of the section in view ---
+    function setupScrollSpy() {
+        var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link[href^="#"]'));
+        if (!links.length) return;
+        var map = {};
+        var sections = [];
+        links.forEach(function(link) {
+            var id = link.getAttribute('href').slice(1);
+            var section = document.getElementById(id);
+            if (section) { map[id] = link; sections.push(section); }
+        });
+        if (!sections.length) return;
+
+        var spy = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                var link = map[entry.target.id];
+                if (!link) return;
+                if (entry.isIntersecting) {
+                    links.forEach(function(l) { l.classList.remove('active'); });
+                    link.classList.add('active');
+                }
+            });
+        }, { rootMargin: '-40% 0px -55% 0px', threshold: 0 });
+
+        sections.forEach(function(s) { spy.observe(s); });
     }
 
     // --- Scroll Reveal ---
@@ -685,8 +1111,16 @@ document.addEventListener('DOMContentLoaded', function() {
         var partnerCount = document.querySelectorAll('.partner-list > li').length;
         if (partnerCount > 0) statPartners.textContent = partnerCount;
     }
-    setLanguage('ru');
+    // Язык: мгновенный рендер на localStorage/navigator.language,
+    // затем неблокирующее уточнение по IP-геолокации
+    var initialLang = detectInitialLang();
+    setLanguage(initialLang.lang);
+    if (!initialLang.final) refineLangByGeo();
+
     setupTilt(); // bind static tilt tiles (partners, support)
     setupScrollReveal(); // observe static reveals (section heads, partner cards)
     setupStatCounters();
+    setupScrollProgress();
+    setupMagneticButtons();
+    setupScrollSpy();
 });
