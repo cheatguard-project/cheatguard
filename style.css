@@ -37,6 +37,17 @@
     --radius-lg: 20px;
     --radius-pill: 999px;
     --shadow-lift: 0 18px 50px rgba(0, 0, 0, 0.45);
+
+    /* --- Organic / "living substance" tokens ---
+       Единая метафора: тёмная атмосфера + живой дым + желейная органика.
+       Все параметры стиля (углы, easing желе, глов, дым) собраны здесь. */
+    --jelly-dx: 46px;                /* диагональный сдвиг toast по X */
+    --jelly-dy: 58px;                /* диагональный сдвиг toast по Y */
+    --jelly-in-dur: 780ms;           /* желейное появление */
+    --jelly-out-dur: 460ms;          /* втягивание */
+    --glow-size: 280px;              /* диаметр cursor-glow (420 / 1.5) */
+    --glow-blur: 1.5px;              /* blur глова (2 / ~1.5) */
+    --glow-core-alpha: 0.14;         /* ядро ярче: компенсация меньшего размера */
 }
 
 html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
@@ -105,17 +116,20 @@ ul { list-style: none; }
 /* ============================================================
    CURSOR GLOW
    ============================================================ */
+/* Уменьшен ровно в 1.5 раза: 420px → 280px, blur 2px → 1.5px.
+   Все параметры градиента остаются в процентах (масштабируются сами),
+   ядро чуть ярче (0.10 → 0.14), чтобы меньший глов не потерялся. */
 .cursor-glow {
     position: fixed;
-    width: 420px; height: 420px;
+    width: var(--glow-size); height: var(--glow-size);
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(160, 180, 220, 0.10) 0%, rgba(160,180,220,0.04) 35%, transparent 70%);
+    background: radial-gradient(circle, rgba(160, 180, 220, var(--glow-core-alpha)) 0%, rgba(160,180,220,0.055) 35%, transparent 70%);
     pointer-events: none;
     transform: translate(-50%, -50%);
     transition: transform 0.1s linear;
     z-index: 0;
     mix-blend-mode: screen;
-    filter: blur(2px);
+    filter: blur(var(--glow-blur));
 }
 
 /* ============================================================
@@ -414,6 +428,18 @@ ul { list-style: none; }
 }
 .cta-btn svg { transition: transform 0.3s var(--ease); flex-shrink: 0; }
 .cta-btn:hover svg { transform: translateX(4px); }
+
+/* Желейный отклик при нажатии — в тон анимации уведомлений:
+   объём сохраняется (scaleX и scaleY в противофазе), затухающее колебание */
+.cta-btn:active { animation: jellyPress 0.5s linear; }
+.cmd-code-wrap:active { animation: jellyPress 0.5s linear; }
+@keyframes jellyPress {
+    0%   { transform: scale(1, 1); }
+    28%  { transform: scale(0.94, 1.05); }
+    52%  { transform: scale(1.04, 0.955); }
+    74%  { transform: scale(0.985, 1.015); }
+    100% { transform: scale(1, 1); }
+}
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -1134,12 +1160,9 @@ ul { list-style: none; }
     letter-spacing: 0.2px;
     z-index: 1500;
     opacity: 0;
-    translate: 0 40px;
-    scale: 0.85;
-    transition:
-        opacity 0.35s var(--ease),
-        translate 0.55s cubic-bezier(.34,1.56,.64,1),
-        scale 0.55s cubic-bezier(.34,1.56,.64,1);
+    transform: translate(var(--jelly-dx), var(--jelly-dy));
+    transform-origin: 100% 100%; /* желе "шлёпается" из нижнего правого угла */
+    will-change: transform, border-radius;
     box-shadow:
         0 22px 60px rgba(0,0,0,0.55),
         0 0 0 1px rgba(255,255,255,0.04) inset,
@@ -1147,7 +1170,72 @@ ul { list-style: none; }
     overflow: visible;
     pointer-events: none;
 }
-.toast.show { opacity: 1; translate: 0 0; scale: 1; }
+/* --- "Диагональное желе" ---
+   Появление: снизу-справа → вверх-влево (естественно для toast в правом
+   нижнем углу — он "выныривает" из угла экрана к контенту).
+   Техника: skew + scaleX/scaleY в противофазе + морфинг border-radius.
+   Почему это реалистично: у настоящего желе объём сохраняется — когда оно
+   сжимается по одной оси, оно расширяется по другой. Поэтому scaleX и
+   scaleY всегда двигаются в противоположных направлениях, а skew имитирует
+   инерцию массы по диагонали движения. Морфинг border-radius добавляет
+   "провисание" формы в момент остановки. */
+.toast.show {
+    animation: toastJellyIn var(--jelly-in-dur) linear both;
+}
+.toast.hide {
+    animation: toastJellyOut var(--jelly-out-dur) cubic-bezier(0.5, 0, 0.75, 0.2) both;
+}
+
+@keyframes toastJellyIn {
+    /* фаза 1: вылет по диагонали, масса растянута вдоль движения */
+    0% {
+        opacity: 0;
+        transform: translate(var(--jelly-dx), var(--jelly-dy)) skew(-9deg, -4deg) scale(0.72, 1.18);
+        border-radius: 26px 16px 30px 12px;
+    }
+    /* фаза 2: подлёт с перехлёстом за точку покоя */
+    38% {
+        opacity: 1;
+        transform: translate(calc(var(--jelly-dx) * -0.14), calc(var(--jelly-dy) * -0.16)) skew(5deg, 2.5deg) scale(1.10, 0.86);
+        border-radius: 12px 24px 10px 26px;
+    }
+    /* фаза 3: отскок назад — желе "шлёпнулось" и колыхнулось */
+    62% {
+        transform: translate(calc(var(--jelly-dx) * 0.05), calc(var(--jelly-dy) * 0.06)) skew(-2.5deg, -1.2deg) scale(0.955, 1.06);
+        border-radius: 20px 14px 22px 13px;
+    }
+    /* фаза 4: дожатие формы — затухающее колебание */
+    82% {
+        transform: translate(calc(var(--jelly-dx) * -0.015), calc(var(--jelly-dy) * -0.02)) skew(1deg, 0.5deg) scale(1.015, 0.985);
+        border-radius: 15px 18px 15px 18px;
+    }
+    100% {
+        opacity: 1;
+        transform: translate(0, 0) skew(0, 0) scale(1, 1);
+        border-radius: 16px;
+    }
+}
+
+/* Исчезновение — зеркальное, но не идентичное: желе сначала слегка
+   тянется в противоположный (верхний левый) угол, затем втягивается
+   вниз-вправо, сжимаясь внутрь. */
+@keyframes toastJellyOut {
+    0% {
+        opacity: 1;
+        transform: translate(0, 0) skew(0, 0) scale(1, 1);
+        border-radius: 16px;
+    }
+    26% {
+        opacity: 1;
+        transform: translate(calc(var(--jelly-dx) * -0.10), calc(var(--jelly-dy) * -0.12)) skew(3.5deg, 1.8deg) scale(1.07, 0.90);
+        border-radius: 10px 24px 10px 24px;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(calc(var(--jelly-dx) * 1.1), calc(var(--jelly-dy) * 1.15)) skew(-11deg, -5deg) scale(0.6, 1.22);
+        border-radius: 30px 12px 32px 10px;
+    }
+}
 
 /* Gradient border ring */
 .toast::before {
@@ -1826,7 +1914,11 @@ ul { list-style: none; }
     body::before { animation: none; }
     .scroll-progress { display: none; }
     .hero-word-inner { transform: none; animation: none; }
-    .cta-btn { transform: none !important; }
+    .cta-btn { transform: none !important; animation: none !important; }
+    .cmd-code-wrap { animation: none !important; }
+    .toast { transform: none; transition: opacity 0.2s ease; }
+    .toast.show { animation: none; opacity: 1; }
+    .toast.hide { animation: none; opacity: 0; }
     .tilt { transition: border-color 0.3s, box-shadow 0.3s; transform: none !important; }
     .tilt::after { display: none; }
     .hero-orb { animation: none; }

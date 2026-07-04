@@ -30,11 +30,35 @@ document.addEventListener('DOMContentLoaded', function() {
         cursorGlow.style.top = e.clientY + 'px';
     });
 
-    // --- Ambient drifting fog blobs (systemdlc-inspired) ---
+    // --- Interactive smoke (Canvas 2D particle field) ---
+    // Canvas 2D выбран вместо WebGL-шейдера сознательно: радиальные градиенты
+    // с низкой прозрачностью и screen-blending дают убедительный объёмный дым
+    // при ~15 формах на кадр (тривиальная нагрузка), без компиляции шейдеров,
+    // WebGL-контекста и лишних килобайт. WebGL оправдан от сотен тысяч частиц.
     var canvas = document.getElementById('particlesCanvas');
     var ctx = canvas.getContext('2d');
     var blobs = [];
     var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var isCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+    // Силовое поле курсора: позиция сглаживается (lerp), чтобы дым реагировал
+    // с лёгкой инерцией, а не дёргался за мышью.
+    var smokeMouse = { x: -9999, y: -9999, tx: -9999, ty: -9999, vx: 0, vy: 0, px: -9999, py: -9999 };
+    var SMOKE_CURSOR_RADIUS = 340;   // радиус действия поля, px
+    var SMOKE_REPEL = 0.055;         // сила расталкивания от курсора
+    var SMOKE_SWIRL = 0.045;         // сила закручивания (перпендикулярная составляющая)
+    var SMOKE_DRAG_BOOST = 0.06;     // увлечение дыма за быстрым движением мыши
+
+    if (!isCoarsePointer && !prefersReducedMotion) {
+        document.addEventListener('mousemove', function(e) {
+            smokeMouse.tx = e.clientX;
+            smokeMouse.ty = e.clientY;
+        }, { passive: true });
+        document.addEventListener('mouseleave', function() {
+            smokeMouse.tx = -9999;
+            smokeMouse.ty = -9999;
+        });
+    }
 
     function resizeCanvas() {
         var dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -59,14 +83,20 @@ document.addEventListener('DOMContentLoaded', function() {
     function createBlob(seed) {
         var p = smokePalette[Math.floor(Math.random() * smokePalette.length)];
         var isLarge = Math.random() < 0.36;
+        // depth: 0.35 (дальний слой) … 1 (ближний). Крупные формы — дальше:
+        // движутся медленнее, прозрачнее, слабее реагируют на курсор — параллакс.
+        var depth = isLarge ? (0.35 + Math.random() * 0.3) : (0.6 + Math.random() * 0.4);
         return {
             x: Math.random() * window.innerWidth,
             y: Math.random() * window.innerHeight,
             baseR: isLarge ? (260 + Math.random() * 260) : (110 + Math.random() * 150),
-            vx: (Math.random() - 0.5) * 0.08,
-            vy: (Math.random() - 0.5) * 0.06 - 0.01,
+            vx: (Math.random() - 0.5) * 0.08 * depth,
+            vy: ((Math.random() - 0.5) * 0.06 - 0.01) * depth,
+            /* скорость от силового поля курсора (затухающая) */
+            fx: 0, fy: 0,
+            depth: depth,
             h: p.h, s: p.s, l: p.l,
-            baseOp: isLarge ? (0.018 + Math.random() * 0.025) : (0.024 + Math.random() * 0.028),
+            baseOp: (isLarge ? (0.018 + Math.random() * 0.025) : (0.024 + Math.random() * 0.028)) * (0.6 + depth * 0.4),
             swirl: Math.random() * Math.PI * 2,
             swirlSpeed: 0.00025 + Math.random() * 0.00075,
             swirlAmp: 18 + Math.random() * 46,
@@ -79,11 +109,60 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    var BLOB_COUNT = 10;
+    // Адаптивное число форм: меньше на мобильных, автоснижение при низком FPS.
+    var BLOB_COUNT = isCoarsePointer ? 6 : 12;
     for (var i = 0; i < BLOB_COUNT; i++) blobs.push(createBlob(i));
 
-    function animateBlobs() {
+    var fpsSamples = 0, fpsAccum = 0, lastFrameTs = 0, fpsChecked = false;
+
+    // Сила взаимодействия курсора с дымом: внутри радиуса действует
+    // репеллер (расталкивание) + перпендикулярный вихрь (закручивание),
+    // сила затухает квадратично к краю поля. Быстрое движение мыши
+    // дополнительно "увлекает" дым за собой (drag).
+    function applyCursorForce(b) {
+        var dx = b.x - smokeMouse.x;
+        var dy = b.y - smokeMouse.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var radius = SMOKE_CURSOR_RADIUS * (0.6 + b.depth * 0.55);
+        if (dist > radius || dist < 0.001) return;
+        var t = 1 - dist / radius;
+        var falloff = t * t; // квадратичное затухание — мягкий край поля
+        var nx = dx / dist, ny = dy / dist;
+        var strength = falloff * b.depth;
+        // репеллер: от курсора наружу
+        b.fx += nx * SMOKE_REPEL * strength;
+        b.fy += ny * SMOKE_REPEL * strength;
+        // вихрь: перпендикуляр к радиусу → дым закручивается вокруг курсора
+        b.fx += -ny * SMOKE_SWIRL * strength;
+        b.fy += nx * SMOKE_SWIRL * strength;
+        // увлечение за скоростью мыши
+        b.fx += smokeMouse.vx * SMOKE_DRAG_BOOST * strength;
+        b.fy += smokeMouse.vy * SMOKE_DRAG_BOOST * strength;
+    }
+
+    function animateBlobs(ts) {
         var W = window.innerWidth, H = window.innerHeight;
+
+        // Адаптация под FPS: первые ~90 кадров замеряем; если в среднем
+        // ниже ~45 fps — убираем треть форм (сначала мелкие ближние).
+        if (!fpsChecked && lastFrameTs && ts) {
+            fpsAccum += ts - lastFrameTs;
+            fpsSamples += 1;
+            if (fpsSamples >= 90) {
+                fpsChecked = true;
+                var avgFrame = fpsAccum / fpsSamples;
+                if (avgFrame > 22) blobs.length = Math.max(4, Math.floor(blobs.length * 0.66));
+            }
+        }
+        lastFrameTs = ts || 0;
+
+        // Инерционное сглаживание позиции курсора + оценка его скорости
+        smokeMouse.px = smokeMouse.x; smokeMouse.py = smokeMouse.y;
+        smokeMouse.x += (smokeMouse.tx - smokeMouse.x) * 0.12;
+        smokeMouse.y += (smokeMouse.ty - smokeMouse.y) * 0.12;
+        smokeMouse.vx = smokeMouse.x - smokeMouse.px;
+        smokeMouse.vy = smokeMouse.y - smokeMouse.py;
+
         ctx.clearRect(0, 0, W, H);
         // Additive blending for soft "light through fog" feel
         ctx.globalCompositeOperation = 'screen';
@@ -92,8 +171,14 @@ document.addEventListener('DOMContentLoaded', function() {
             b.swirl += b.swirlSpeed;
             b.swirl2 += b.swirl2Speed;
             b.pulse += b.pulseSpeed;
-            b.x += b.vx;
-            b.y += b.vy;
+
+            // силовое поле курсора → скорость с вязким затуханием
+            if (smokeMouse.tx > -9000) applyCursorForce(b);
+            b.fx *= 0.94; // вязкость: дым медленно "успокаивается"
+            b.fy *= 0.94;
+
+            b.x += b.vx + b.fx;
+            b.y += b.vy + b.fy;
             // wrap toroidally
             if (b.x < -b.baseR) b.x = W + b.baseR;
             else if (b.x > W + b.baseR) b.x = -b.baseR;
@@ -104,15 +189,18 @@ document.addEventListener('DOMContentLoaded', function() {
             var ox = Math.cos(b.swirl) * b.swirlAmp + Math.cos(b.swirl2) * b.swirl2Amp;
             var oy = Math.sin(b.swirl * 1.3) * b.swirlAmp + Math.sin(b.swirl2 * 1.7) * b.swirl2Amp;
             var pulseFactor = 1 + Math.sin(b.pulse) * 0.10;
-            var r = b.baseR * pulseFactor;
-            var op = b.baseOp * (0.78 + Math.sin(b.pulse * 0.7) * 0.18);
+            // Возмущение курсором слегка "раздувает" и подсвечивает дым
+            var agitation = Math.min(Math.sqrt(b.fx * b.fx + b.fy * b.fy) * 0.55, 0.35);
+            var r = b.baseR * (pulseFactor + agitation * 0.4);
+            var op = b.baseOp * (0.78 + Math.sin(b.pulse * 0.7) * 0.18) * (1 + agitation * 1.6);
             var cx = b.x + ox, cy = b.y + oy;
 
-            // Save + apply a slight squish for non-circular smoke shape
+            // Save + apply a slight squish for non-circular smoke shape;
+            // при возмущении форма вытягивается вдоль направления силы
             ctx.save();
             ctx.translate(cx, cy);
-            ctx.rotate(b.swirl * 0.22);
-            ctx.scale(1.35, b.squish);
+            ctx.rotate(agitation > 0.02 ? Math.atan2(b.fy, b.fx) : b.swirl * 0.22);
+            ctx.scale(1.35 + agitation * 0.5, b.squish);
             var grd = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
             grd.addColorStop(0,    'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,' + op + ')');
             grd.addColorStop(0.42, 'hsla(' + b.h + ',' + b.s + '%,' + b.l + '%,' + (op * 0.42) + ')');
@@ -599,15 +687,28 @@ document.addEventListener('DOMContentLoaded', function() {
         setupTilt();
     }
 
-    // --- Toast ---
-    var toastTimeout;
+    // --- Toast: "диагональное желе" ---
+    // Появление = keyframe toastJellyIn, скрытие = toastJellyOut (класс .hide).
+    // При каждом вызове слегка варьируем амплитуду диагонали, чтобы повторные
+    // уведомления не выглядели механически одинаковыми (stagger-эффект).
+    var toastTimeout, toastHideTimeout;
     function showToast() {
         clearTimeout(toastTimeout);
+        clearTimeout(toastHideTimeout);
+        // Джиттер амплитуды: базовые 46/58px ± ~18%
+        var jx = 46 + (Math.random() - 0.5) * 16;
+        var jy = 58 + (Math.random() - 0.5) * 20;
+        toast.style.setProperty('--jelly-dx', jx.toFixed(0) + 'px');
+        toast.style.setProperty('--jelly-dy', jy.toFixed(0) + 'px');
         // Force reflow so the entrance + check + sparks animations replay on every call
-        toast.classList.remove('show');
+        toast.classList.remove('show', 'hide');
         void toast.offsetWidth;
         toast.classList.add('show');
-        toastTimeout = setTimeout(function() { toast.classList.remove('show'); }, 2400);
+        toastTimeout = setTimeout(function() {
+            toast.classList.remove('show');
+            toast.classList.add('hide');
+            toastHideTimeout = setTimeout(function() { toast.classList.remove('hide'); }, 500);
+        }, 2400);
     }
 
     // --- Scroll progress bar ---
