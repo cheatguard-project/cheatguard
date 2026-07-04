@@ -2401,6 +2401,13 @@ ul { list-style: none; }
     .nav-link:hover::before, .brand::before { animation: none; opacity: 0; }
     .st-word { opacity: 1; transform: none; filter: none; }
     .section-head.reveal .section-title { clip-path: none; transition: none; }
+    .hero-radar { animation: none; opacity: 0.5; }
+    .radar-beam, .radar-blip, .radar-blip::after, .radar-blip-threat::before { animation: none; }
+    .radar-blip { opacity: 0.5; }
+    .gate-scanline { animation: none; opacity: 0.4; }
+    .gate-panel.shake { animation: none; }
+    .access-gate.unlocking .gate-panel { animation: none; opacity: 0; }
+    .commands-workspace { animation: none; }
     .tilt { transition: border-color 0.3s, box-shadow 0.3s; transform: none !important; }
     .tilt::after { display: none; }
     .hero-orb { animation: none; }

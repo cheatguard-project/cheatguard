@@ -274,6 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
         renderFAQ();
         splitHeroTitle();
         splitSectionTitles();
+        if (accessState) updateAccessBanner();
         langSwitcher.classList.remove('open');
     }
 
@@ -449,6 +450,137 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // ============================================================
+    // ACCESS GATE — кодовое слово перед базой команд.
+    // Гость: PowerShell-команды 1–7. Кодовое слово: гостевой набор +
+    // "своя" команда + 4 случайные из закрытого пула. CMD-команды
+    // открыты всем. Выбор хранится в sessionStorage (на сессию).
+    // ============================================================
+    var ACCESS_CODES = { mont: 'c11', prol: 'c12', seno: 'c13', embr: 'c14' };
+    var GUEST_PS_IDS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7'];
+    var accessState = null; // { level: 'guest'|код, allowed: [ids] }
+
+    var accessGateEl = document.getElementById('accessGate');
+    var commandsWorkspace = document.getElementById('commandsWorkspace');
+    var gateForm = document.getElementById('gateForm');
+    var gateInput = document.getElementById('gateInput');
+    var gateStatus = document.getElementById('gateStatus');
+    var gateGuestBtn = document.getElementById('gateGuestBtn');
+    var accessBanner = document.getElementById('accessBanner');
+    var accessBannerText = document.getElementById('accessBannerText');
+    var accessResetBtn = document.getElementById('accessResetBtn');
+
+    function gateT(key) {
+        return (window.i18n[currentLang] && window.i18n[currentLang][key]) || (window.i18n['en'] && window.i18n['en'][key]) || key;
+    }
+
+    function computeAllowed(level) {
+        if (level === 'guest') return GUEST_PS_IDS.slice();
+        var allowed = GUEST_PS_IDS.slice();
+        allowed.push(ACCESS_CODES[level]);
+        // 4 случайные команды из оставшегося закрытого пула
+        var pool = window.commandsData
+            .filter(function(c) { return c.shell === 'powershell' && allowed.indexOf(c.id) === -1; })
+            .map(function(c) { return c.id; });
+        for (var i = pool.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+        }
+        return allowed.concat(pool.slice(0, 4));
+    }
+
+    function saveAccess(state) {
+        try { sessionStorage.setItem('cg_access', JSON.stringify(state)); } catch (err) { /* noop */ }
+    }
+
+    function loadAccess() {
+        try {
+            var raw = sessionStorage.getItem('cg_access');
+            if (!raw) return null;
+            var st = JSON.parse(raw);
+            if (st && st.allowed && (st.level === 'guest' || ACCESS_CODES[st.level])) return st;
+        } catch (err) { /* noop */ }
+        return null;
+    }
+
+    function updateAccessBanner() {
+        if (!accessBanner || !accessState) return;
+        if (accessState.level === 'guest') {
+            accessBanner.classList.add('guest');
+            accessBannerText.textContent = gateT('gate_banner_guest');
+        } else {
+            accessBanner.classList.remove('guest');
+            accessBannerText.textContent = gateT('gate_banner_code') + ' "' + accessState.level.toUpperCase() + '" — ' + accessState.allowed.length + ' PS';
+        }
+    }
+
+    function unlockWorkspace(animate) {
+        updateAccessBanner();
+        if (animate && !prefersReducedMotion) {
+            accessGateEl.classList.add('unlocking');
+            setTimeout(function() {
+                accessGateEl.hidden = true;
+                commandsWorkspace.hidden = false;
+                renderCommands();
+            }, 580);
+        } else {
+            accessGateEl.hidden = true;
+            commandsWorkspace.hidden = false;
+            renderCommands();
+        }
+    }
+
+    function grantAccess(level, animate) {
+        accessState = { level: level, allowed: computeAllowed(level) };
+        saveAccess(accessState);
+        unlockWorkspace(animate);
+    }
+
+    if (gateForm) {
+        gateForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var code = gateInput.value.trim().toLowerCase();
+            if (ACCESS_CODES[code]) {
+                gateStatus.className = 'gate-status ok';
+                gateStatus.textContent = gateT('gate_ok');
+                setTimeout(function() { grantAccess(code, true); }, 450);
+            } else {
+                gateStatus.className = 'gate-status err';
+                gateStatus.textContent = gateT('gate_err');
+                var panel = accessGateEl.querySelector('.gate-panel');
+                panel.classList.remove('shake');
+                void panel.offsetWidth;
+                panel.classList.add('shake');
+                gateInput.select();
+            }
+        });
+    }
+    if (gateGuestBtn) {
+        gateGuestBtn.addEventListener('click', function() { grantAccess('guest', true); });
+    }
+    if (accessResetBtn) {
+        accessResetBtn.addEventListener('click', function() {
+            try { sessionStorage.removeItem('cg_access'); } catch (err) { /* noop */ }
+            accessState = null;
+            commandsWorkspace.hidden = true;
+            accessGateEl.hidden = false;
+            accessGateEl.classList.remove('unlocking');
+            gateStatus.className = 'gate-status';
+            gateStatus.textContent = '';
+            gateInput.value = '';
+        });
+    }
+
+    // Восстановление доступа из сессии
+    accessState = loadAccess();
+    if (accessState) unlockWorkspace(false);
+
+    function isCommandLocked(cmd) {
+        if (cmd.shell !== 'powershell') return false;
+        if (!accessState) return true;
+        return accessState.allowed.indexOf(cmd.id) === -1;
+    }
+
     // --- Render Commands ---
     function renderCommands() {
         commandsList.innerHTML = '';
@@ -493,6 +625,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         filtered.forEach(function(cmd, idx) {
+            // Заблокированная карточка-тизер: заголовок размыт, замок вместо стрелки
+            if (isCommandLocked(cmd)) {
+                var lockedCard = document.createElement('div');
+                lockedCard.className = 'cmd-card locked';
+                lockedCard.style.animationDelay = (idx * 0.05) + 's';
+                var lockedNum = (idx + 1).toString().padStart(2, '0');
+                var lockedCatKey = 'cat_' + cmd.category;
+                var lockedCatName = (window.i18n[currentLang] && window.i18n[currentLang][lockedCatKey]) || cmd.category;
+                var lockedTitle = cmd.title[currentLang] || cmd.title['en'];
+                lockedCard.innerHTML =
+                    '<div class="cmd-header">' +
+                        '<div class="cmd-header-left">' +
+                            '<span class="cmd-num">' + lockedNum + '</span>' +
+                            '<span class="cmd-title-text"></span>' +
+                            '<span class="cmd-badge">' + lockedCatName + '</span>' +
+                        '</div>' +
+                        '<svg class="cmd-lock-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>' +
+                    '</div>';
+                lockedCard.querySelector('.cmd-title-text').textContent = lockedTitle;
+                lockedCard.setAttribute('title', gateT('gate_locked_hint'));
+                commandsList.appendChild(lockedCard);
+                return;
+            }
+
             var card = document.createElement('div');
             card.className = 'cmd-card tilt';
             card.style.animationDelay = (idx * 0.05) + 's';
