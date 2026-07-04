@@ -21,9 +21,6 @@ document.addEventListener('DOMContentLoaded', function() {
     var cmdSearchInput = document.getElementById('cmdSearch');
     var cmdSearchWrap = cmdSearchInput ? cmdSearchInput.closest('.cmd-search') : null;
     var cmdSearchClear = document.getElementById('cmdSearchClear');
-    var heroCommandText = document.getElementById('heroCommandText');
-    var heroCommandIndex = document.getElementById('heroCommandIndex');
-    var heroCommandTitle = document.getElementById('heroCommandTitle');
     var toast = document.getElementById('toast');
     var statCmds = document.getElementById('statCmds');
 
@@ -205,58 +202,44 @@ document.addEventListener('DOMContentLoaded', function() {
         return (window.i18n[currentLang] && window.i18n[currentLang][key]) || fallback;
     }
 
-    function startHeroCommandTyping() {
-        if (!heroCommandText || !window.commandsData) return;
+    // --- Animated stat counters: count up when the stats bar scrolls into view ---
+    function setupStatCounters() {
+        var statNums = document.querySelectorAll('.stat-num');
+        if (!statNums.length) return;
 
-        var items = window.commandsData
-            .filter(function(cmd) { return cmd.shell === 'powershell'; })
-            .slice(0, 4);
-        if (!items.length) return;
+        function animateCounter(el) {
+            var raw = el.textContent.trim();
+            var match = raw.match(/^(\d+)(.*)$/);
+            if (!match) return;
+            var target = parseInt(match[1], 10);
+            var suffix = match[2] || '';
+            if (prefersReducedMotion || target <= 1) return;
 
-        var itemIndex = 0;
-        var charIndex = 0;
-        var deleting = false;
+            var duration = 1400;
+            var start = null;
+            el.textContent = '0' + suffix;
 
-        function renderMeta() {
-            var item = items[itemIndex];
-            if (heroCommandIndex) {
-                heroCommandIndex.textContent = String(itemIndex + 1).padStart(2, '0') + ' / 04';
+            function step(ts) {
+                if (!start) start = ts;
+                var progress = Math.min((ts - start) / duration, 1);
+                // ease-out-expo
+                var eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+                el.textContent = Math.round(eased * target) + suffix;
+                if (progress < 1) requestAnimationFrame(step);
             }
-            if (heroCommandTitle) {
-                heroCommandTitle.textContent = item.title[currentLang] || item.title.en || '';
-            }
+            requestAnimationFrame(step);
         }
 
-        function tick() {
-            var item = items[itemIndex];
-            var code = item.code;
-            renderMeta();
-            heroCommandText.textContent = code.slice(0, charIndex);
+        var counterObserver = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    animateCounter(entry.target);
+                    counterObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.6 });
 
-            if (prefersReducedMotion) {
-                heroCommandText.textContent = code;
-                return;
-            }
-
-            var delay;
-            if (!deleting && charIndex < code.length) {
-                charIndex += 1;
-                delay = code.charAt(charIndex - 1) === ' ' ? 42 : 20 + Math.random() * 18;
-            } else if (!deleting) {
-                deleting = true;
-                delay = 1700;
-            } else if (charIndex > 0) {
-                charIndex -= Math.max(1, Math.floor(code.length / 90));
-                delay = 8;
-            } else {
-                deleting = false;
-                itemIndex = (itemIndex + 1) % items.length;
-                delay = 420;
-            }
-            window.setTimeout(tick, delay);
-        }
-
-        tick();
+        statNums.forEach(function(el) { counterObserver.observe(el); });
     }
 
     function updateCategoryCounts() {
@@ -704,5 +687,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     setLanguage('ru');
     setupTilt(); // bind static tilt tiles (partners, support)
-    startHeroCommandTyping();
+    setupScrollReveal(); // observe static reveals (section heads, partner cards)
+    setupStatCounters();
 });
