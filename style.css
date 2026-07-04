@@ -18,9 +18,25 @@
     --serif: 'Playfair Display', serif;
     --sans: 'Inter', sans-serif;
     --nav-h: 72px;
+
+    /* --- Motion tokens ---
+       micro  : hovers, icons, focus rings
+       state  : buttons, cards, dropdowns, toggles
+       section: reveals, section entrances, big transitions */
+    --dur-micro: 160ms;
+    --dur-state: 320ms;
+    --dur-section: 640ms;
     --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-soft: cubic-bezier(0.45, 0, 0.15, 1);
+
+    /* --- Shape & elevation tokens --- */
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-pill: 999px;
+    --shadow-lift: 0 18px 50px rgba(0, 0, 0, 0.45);
 }
 
 html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
@@ -112,6 +128,20 @@ ul { list-style: none; }
 }
 
 /* ============================================================
+   SCROLL PROGRESS BAR
+   ============================================================ */
+.scroll-progress {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 2px;
+    z-index: 1200;
+    background: linear-gradient(90deg, rgba(255,255,255,0.95), rgba(170,185,220,0.85));
+    transform-origin: left center;
+    transform: scaleX(0);
+    pointer-events: none;
+    box-shadow: 0 0 12px rgba(255,255,255,0.25);
+}
+
+/* ============================================================
    NAVBAR
    ============================================================ */
 .navbar {
@@ -176,6 +206,8 @@ ul { list-style: none; }
 }
 .nav-link:hover { color: white; }
 .nav-link:hover::after { width: 100%; }
+.nav-link.active { color: white; }
+.nav-link.active::after { width: 100%; }
 
 /* Nav right */
 .nav-right { display: flex; align-items: center; gap: 16px; }
@@ -294,6 +326,38 @@ ul { list-style: none; }
     to { transform: translateY(0); opacity: 1; }
 }
 
+/* Word-by-word masked reveal (applied via JS split).
+   background-clip: text cannot paint through transformed children,
+   so when split we move the gradient onto each word span. */
+.hero-title.split .hero-title-line {
+    background: none;
+    animation: none;
+}
+.hero-word {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: bottom;
+    /* Generous padding so serif italic descenders and overhangs are not clipped */
+    padding: 0.08em 0.14em 0.26em;
+    margin: -0.08em -0.14em -0.26em;
+}
+.hero-word-inner {
+    display: inline-block;
+    transform: translateY(115%) rotate(4deg);
+    transform-origin: left bottom;
+    animation: wordRise 0.85s var(--ease-out-expo) both, shimmer 6s ease-in-out infinite;
+    animation-delay: var(--wd, 0.15s), 1.6s;
+    will-change: transform;
+    background: linear-gradient(90deg, #fff 0%, #aaa 40%, #fff 60%, #aaa 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+@keyframes wordRise {
+    to { transform: translateY(0) rotate(0deg); }
+}
+
 /* Hero desc */
 .hero-desc {
     font-size: 1rem;
@@ -318,8 +382,14 @@ ul { list-style: none; }
     border-radius: 50px;
     font-size: 0.9rem; font-weight: 500;
     color: white;
-    transition: all 0.3s var(--ease);
+    transition:
+        border-color var(--dur-state) var(--ease),
+        background var(--dur-state) var(--ease),
+        color var(--dur-state) var(--ease),
+        box-shadow var(--dur-state) var(--ease),
+        transform var(--dur-state) var(--ease);
     position: relative; overflow: hidden;
+    will-change: transform;
 }
 .cta-btn::before {
     content: '';
@@ -1183,12 +1253,18 @@ ul { list-style: none; }
 .reveal {
     opacity: 0;
     translate: 0 28px;
+    scale: 0.985;
     filter: blur(6px);
-    transition: opacity 0.8s var(--ease-out-expo), translate 0.8s var(--ease-out-expo), filter 0.8s var(--ease-out-expo);
+    transition:
+        opacity var(--dur-section) var(--ease-out-expo),
+        translate var(--dur-section) var(--ease-out-expo),
+        scale var(--dur-section) var(--ease-out-expo),
+        filter var(--dur-section) var(--ease-out-expo);
 }
 .reveal.visible {
     opacity: 1;
     translate: 0 0;
+    scale: 1;
     filter: blur(0);
 }
 
@@ -1748,6 +1824,9 @@ ul { list-style: none; }
 /* Reduced motion accessibility */
 @media (prefers-reduced-motion: reduce) {
     body::before { animation: none; }
+    .scroll-progress { display: none; }
+    .hero-word-inner { transform: none; animation: none; }
+    .cta-btn { transform: none !important; }
     .tilt { transition: border-color 0.3s, box-shadow 0.3s; transform: none !important; }
     .tilt::after { display: none; }
     .hero-orb { animation: none; }

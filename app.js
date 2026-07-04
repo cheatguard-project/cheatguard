@@ -179,7 +179,35 @@ document.addEventListener('DOMContentLoaded', function() {
         renderCommands();
         renderArtifacts();
         renderFAQ();
+        splitHeroTitle();
         langSwitcher.classList.remove('open');
+    }
+
+    // --- Hero title: word-by-word masked reveal (re-runs on language change) ---
+    function splitHeroTitle() {
+        var title = document.querySelector('.hero-title');
+        if (!title) return;
+        if (prefersReducedMotion) return;
+
+        var wordIndex = 0;
+        title.querySelectorAll('.hero-title-line').forEach(function(line) {
+            var text = line.textContent.trim();
+            if (!text) return;
+            line.textContent = '';
+            text.split(/\s+/).forEach(function(word, i) {
+                if (i > 0) line.appendChild(document.createTextNode(' '));
+                var outer = document.createElement('span');
+                outer.className = 'hero-word';
+                var inner = document.createElement('span');
+                inner.className = 'hero-word-inner';
+                inner.textContent = word;
+                inner.style.setProperty('--wd', (0.15 + wordIndex * 0.11) + 's');
+                outer.appendChild(inner);
+                line.appendChild(outer);
+                wordIndex += 1;
+            });
+        });
+        title.classList.add('split');
     }
 
     langBtn.addEventListener('click', function(e) {
@@ -582,6 +610,71 @@ document.addEventListener('DOMContentLoaded', function() {
         toastTimeout = setTimeout(function() { toast.classList.remove('show'); }, 2400);
     }
 
+    // --- Scroll progress bar ---
+    function setupScrollProgress() {
+        var bar = document.getElementById('scrollProgress');
+        if (!bar || prefersReducedMotion) return;
+        var ticking = false;
+        function update() {
+            ticking = false;
+            var max = document.documentElement.scrollHeight - window.innerHeight;
+            var p = max > 0 ? Math.min(window.scrollY / max, 1) : 0;
+            bar.style.transform = 'scaleX(' + p.toFixed(4) + ')';
+        }
+        window.addEventListener('scroll', function() {
+            if (!ticking) { ticking = true; requestAnimationFrame(update); }
+        }, { passive: true });
+        update();
+    }
+
+    // --- Magnetic CTA buttons: subtle pull toward the cursor ---
+    function setupMagneticButtons() {
+        if (prefersReducedMotion) return;
+        document.querySelectorAll('.cta-btn').forEach(function(btn) {
+            var strength = 0.22;
+            btn.addEventListener('mouseenter', function() {
+                btn.style.transition = '';
+            });
+            btn.addEventListener('mousemove', function(e) {
+                var rect = btn.getBoundingClientRect();
+                var dx = e.clientX - (rect.left + rect.width / 2);
+                var dy = e.clientY - (rect.top + rect.height / 2);
+                btn.style.transform = 'translate(' + (dx * strength).toFixed(1) + 'px, ' + (dy * strength).toFixed(1) + 'px)';
+            });
+            btn.addEventListener('mouseleave', function() {
+                btn.style.transition = 'transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                btn.style.transform = 'translate(0, 0)';
+            });
+        });
+    }
+
+    // --- Scrollspy: highlight the nav link of the section in view ---
+    function setupScrollSpy() {
+        var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link[href^="#"]'));
+        if (!links.length) return;
+        var map = {};
+        var sections = [];
+        links.forEach(function(link) {
+            var id = link.getAttribute('href').slice(1);
+            var section = document.getElementById(id);
+            if (section) { map[id] = link; sections.push(section); }
+        });
+        if (!sections.length) return;
+
+        var spy = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                var link = map[entry.target.id];
+                if (!link) return;
+                if (entry.isIntersecting) {
+                    links.forEach(function(l) { l.classList.remove('active'); });
+                    link.classList.add('active');
+                }
+            });
+        }, { rootMargin: '-40% 0px -55% 0px', threshold: 0 });
+
+        sections.forEach(function(s) { spy.observe(s); });
+    }
+
     // --- Scroll Reveal ---
     function setupScrollReveal() {
         var observer = new IntersectionObserver(function(entries) {
@@ -689,4 +782,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupTilt(); // bind static tilt tiles (partners, support)
     setupScrollReveal(); // observe static reveals (section heads, partner cards)
     setupStatCounters();
+    setupScrollProgress();
+    setupMagneticButtons();
+    setupScrollSpy();
 });
