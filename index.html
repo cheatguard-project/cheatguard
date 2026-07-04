@@ -25,7 +25,12 @@
     <nav class="navbar" id="navbar">
         <div class="nav-inner">
             <a href="#" class="brand">
-                <span class="brand-star">✦</span>
+                <span class="brand-mark" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path>
+                        <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                </span>
                 <span class="brand-name">Cheat<em>Guard</em></span>
             </a>
             <ul class="nav-menu" id="navMenu">
@@ -60,10 +65,19 @@
     <!-- ====== HERO ====== -->
     <section class="hero" id="hero">
         <div class="hero-center">
+            <!-- Official badge -->
+            <div class="hero-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path>
+                    <path d="m9 12 2 2 4-4"></path>
+                </svg>
+                <span data-i18n="hero_kicker">Screenshare toolkit для модераторов</span>
+            </div>
+
             <!-- Big title -->
             <h1 class="hero-title">
-                <span class="hero-title-line" data-i18n="hero_line1">CheatGuard ✦ raises</span>
-                <span class="hero-title-line italic" data-i18n="hero_line2">the bar</span>
+                <span class="hero-title-line" data-i18n="hero_line1">Новый стандарт</span>
+                <span class="hero-title-line italic" data-i18n="hero_line2">честной игры</span>
             </h1>
 
             <p class="hero-desc" data-i18n="hero_desc">
@@ -73,27 +87,32 @@
 
             <div class="hero-actions">
                 <a href="#commands" class="cta-btn cta-primary">
-                    <span class="cta-icon">✦</span>
                     <span data-i18n="hero_cta">Смотреть команды</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </a>
+                <a href="tutorial.html" class="cta-btn cta-secondary">
+                    <span data-i18n="hero_cta_secondary">Методика проверки</span>
                 </a>
             </div>
 
-            <div class="hero-console tilt">
-                <div class="hero-console-top">
-                    <span class="console-dot"></span>
-                    <span class="console-dot"></span>
-                    <span class="console-dot"></span>
-                    <span class="console-title" data-i18n="hero_console_title">Быстрый срез проверки</span>
-                </div>
-                <div class="hero-console-body">
-                    <span class="console-prompt">PS&gt;</span>
-                    <span class="console-command" id="heroCommandText">Get-Process | Select Id, ProcessName, Path</span>
-                    <span class="console-caret" aria-hidden="true"></span>
-                </div>
-                <div class="hero-console-signals">
-                    <span id="heroCommandIndex">01 / 04</span>
-                    <span id="heroCommandTitle">Список процессов с путями</span>
-                </div>
+            <!-- Coverage chips -->
+            <div class="hero-chips" aria-label="Области проверки">
+                <span class="hero-chip" style="--c: 0;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span data-i18n="hero_signal_process">Процессы</span>
+                </span>
+                <span class="hero-chip" style="--c: 1;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span data-i18n="hero_signal_registry">Реестр</span>
+                </span>
+                <span class="hero-chip" style="--c: 2;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span data-i18n="hero_signal_network">Сеть</span>
+                </span>
+                <span class="hero-chip" style="--c: 3;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span data-i18n="hero_signal_logs">Логи</span>
+                </span>
             </div>
 
             <div class="hero-scroll-hint">
@@ -112,22 +131,22 @@
                 <span class="stat-num" id="statCmds">30+</span>
                 <span class="stat-lbl" data-i18n="stat_cmd">Команд</span>
             </div>
-            <div class="stat-sep">✦</div>
+            <div class="stat-sep" aria-hidden="true"></div>
             <div class="stat-item">
                 <span class="stat-num">2</span>
                 <span class="stat-lbl" data-i18n="stat_shells">Оболочки</span>
             </div>
-            <div class="stat-sep">✦</div>
+            <div class="stat-sep" aria-hidden="true"></div>
             <div class="stat-item">
                 <span class="stat-num">8</span>
                 <span class="stat-lbl" data-i18n="stat_art">Артефактов</span>
             </div>
-            <div class="stat-sep">✦</div>
+            <div class="stat-sep" aria-hidden="true"></div>
             <div class="stat-item">
                 <span class="stat-num">3</span>
                 <span class="stat-lbl" data-i18n="stat_lang">Языка</span>
             </div>
-            <div class="stat-sep">✦</div>
+            <div class="stat-sep" aria-hidden="true"></div>
             <div class="stat-item">
                 <span class="stat-num" id="statPartners">23</span>
                 <span class="stat-lbl" data-i18n="stat_partners">Партнёров</span>
@@ -138,7 +157,7 @@
     <!-- ====== COMMANDS ====== -->
     <section class="section commands-section" id="commands">
         <div class="container">
-            <div class="section-head">
+            <div class="section-head reveal">
                 <p class="section-label" data-i18n="cmd_label">— Команды</p>
                 <h2 class="section-title" data-i18n="cmd_title">PowerShell <em>&</em> CMD</h2>
                 <p class="section-sub" data-i18n="cmd_sub">Нажмите на команду, чтобы скопировать в буфер обмена</p>
@@ -185,7 +204,7 @@
     <!-- ====== ARTIFACTS ====== -->
     <section class="section artifacts-section" id="artifacts">
         <div class="container">
-            <div class="section-head">
+            <div class="section-head reveal">
                 <p class="section-label" data-i18n="art_label">— Артефакты Windows</p>
                 <h2 class="section-title" data-i18n="art_title">Системные <em>следы</em></h2>
                 <p class="section-sub" data-i18n="art_sub">Артефакты, которые сохраняют следы даже после удаления чита</p>
@@ -198,14 +217,14 @@
     <section class="section partners-section" id="partners">
         <div class="partners-bg"></div>
         <div class="container">
-            <div class="section-head">
+            <div class="section-head reveal">
                 <p class="section-label" data-i18n="part_label">— Доверие и надежность</p>
                 <h2 class="section-title" data-i18n="part_title">Наши <em>партнеры</em></h2>
                 <p class="section-sub part-desc" data-i18n="part_desc">Эти проекты доверяют нашим методам проверки и активно поддерживают разработку CheatGuard. Мы предоставляем лучший инструментарий для поддержания честной игры на высочайшем уровне, благодаря чему крупнейшие сервера выбирают именно нас.</p>
             </div>
             <div class="partners-grid" id="partnersGrid">
                 <!-- Minecraft -->
-                <div class="partner-category-card tilt">
+                <div class="partner-category-card tilt reveal">
                     <div class="partner-cat-header">
                         <div class="partner-cat-icon-wrap">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="partner-cat-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
@@ -223,7 +242,7 @@
                     </ul>
                 </div>
                 <!-- GTA 5 RP -->
-                <div class="partner-category-card tilt">
+                <div class="partner-category-card tilt reveal">
                     <div class="partner-cat-header">
                         <div class="partner-cat-icon-wrap">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="partner-cat-icon"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2z"></path><path d="M12 12 2.5 9.5"></path><path d="M12 12 21.5 9.5"></path><path d="M12 12v10"></path></svg>
@@ -240,7 +259,7 @@
                     </ul>
                 </div>
                 <!-- CS -->
-                <div class="partner-category-card tilt">
+                <div class="partner-category-card tilt reveal">
                     <div class="partner-cat-header">
                         <div class="partner-cat-icon-wrap">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="partner-cat-icon"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>
@@ -254,7 +273,7 @@
                     </ul>
                 </div>
                 <!-- Rust -->
-                <div class="partner-category-card tilt">
+                <div class="partner-category-card tilt reveal">
                     <div class="partner-cat-header">
                         <div class="partner-cat-icon-wrap">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="partner-cat-icon"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
@@ -271,7 +290,7 @@
                     </ul>
                 </div>
                 <!-- Stalcraft -->
-                <div class="partner-category-card tilt">
+                <div class="partner-category-card tilt reveal">
                     <div class="partner-cat-header">
                         <div class="partner-cat-icon-wrap">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="partner-cat-icon"><path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"></path><path d="M4 6h.01"></path><path d="M2.29 9.62A10 10 0 1 0 21.31 8.35"></path><path d="M16.24 7.76A6 6 0 1 0 8.23 16.67"></path><path d="M12 18h.01"></path><circle cx="12" cy="12" r="2"></circle><path d="M13.41 10.59 15 9"></path></svg>
@@ -289,7 +308,7 @@
     <!-- ====== FAQ ====== -->
     <section class="section faq-section" id="faq">
         <div class="container faq-container">
-            <div class="section-head">
+            <div class="section-head reveal">
                 <p class="section-label">— FAQ</p>
                 <h2 class="section-title" data-i18n="faq_title">Вопросы <em>&</em> ответы</h2>
             </div>
@@ -322,7 +341,7 @@
     <!-- ====== SUPPORT ====== -->
     <section class="section support-section" id="support">
         <div class="container">
-            <div class="section-head">
+            <div class="section-head reveal">
                 <p class="section-label" data-i18n="sup_label">— Поддержка</p>
                 <h2 class="section-title" data-i18n="sup_title">Свяжитесь <em>с нами</em></h2>
                 <p class="section-sub" data-i18n="sup_sub">Любые вопросы, идеи или предложения — выберите удобный канал связи.</p>
@@ -394,7 +413,12 @@
     <footer class="footer">
         <div class="footer-inner">
             <div class="footer-brand">
-                <span class="brand-star">✦</span>
+                <span class="brand-mark" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path>
+                        <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                </span>
                 <span class="brand-name">Cheat<em>Guard</em></span>
             </div>
             <div class="footer-links">
