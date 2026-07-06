@@ -46,10 +46,10 @@ document.addEventListener('DOMContentLoaded', function() {
     var smokeMouse = { x: -9999, y: -9999, tx: -9999, ty: -9999, vx: 0, vy: 0, px: -9999, py: -9999 };
     // Усилено (задача 6): реакция резче, но вихрь остаётся плавным —
     // резкость даёт быстрый lerp и большие силы, плавность — вязкость.
-    var SMOKE_CURSOR_RADIUS = 360;   // радиус действия поля, px
-    var SMOKE_REPEL = 0.095;         // сила расталкивания (0.055 → 0.095)
-    var SMOKE_SWIRL = 0.08;          // сила закручивания (0.045 → 0.08)
-    var SMOKE_DRAG_BOOST = 0.11;     // увлечение за мышью (0.06 → 0.11)
+    var SMOKE_CURSOR_RADIUS = 400;   // радиус действия поля, px
+    var SMOKE_REPEL = 0.13;          // сила расталкивания (0.055 → 0.095 → 0.13)
+    var SMOKE_SWIRL = 0.115;         // сила закручивания (0.045 → 0.08 → 0.115)
+    var SMOKE_DRAG_BOOST = 0.15;     // увлечение за мышью (0.06 → 0.11 → 0.15)
 
     if (!isCoarsePointer && !prefersReducedMotion) {
         document.addEventListener('mousemove', function(e) {
@@ -486,7 +486,8 @@ document.addEventListener('DOMContentLoaded', function() {
             var j = Math.floor(Math.random() * (i + 1));
             var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
         }
-        return allowed.concat(pool.slice(0, 4));
+        var extraCount = Math.min(pool.length, 10 + Math.floor(Math.random() * 6)); // 10..15
+        return allowed.concat(pool.slice(0, extraCount));
     }
 
     function saveAccess(state) {
@@ -964,7 +965,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function setupMagneticButtons() {
         if (prefersReducedMotion) return;
         document.querySelectorAll('.cta-btn').forEach(function(btn) {
-            var strength = 0.22;
+            var strength = 0.32;
             btn.addEventListener('mouseenter', function() {
                 btn.style.transition = '';
             });
@@ -972,11 +973,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 var rect = btn.getBoundingClientRect();
                 var dx = e.clientX - (rect.left + rect.width / 2);
                 var dy = e.clientY - (rect.top + rect.height / 2);
-                btn.style.transform = 'translate(' + (dx * strength).toFixed(1) + 'px, ' + (dy * strength).toFixed(1) + 'px)';
+                var rot = (dx * 0.04).toFixed(2);
+                btn.style.transform = 'translate(' + (dx * strength).toFixed(1) + 'px, ' + (dy * strength).toFixed(1) + 'px) rotate(' + rot + 'deg)';
             });
             btn.addEventListener('mouseleave', function() {
-                btn.style.transition = 'transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                btn.style.transform = 'translate(0, 0)';
+                btn.style.transition = 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                btn.style.transform = 'translate(0, 0) rotate(0deg)';
             });
         });
     }
@@ -1049,14 +1051,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (nx < -0.5) nx = -0.5; else if (nx > 0.5) nx = 0.5;
                 if (ny < -0.5) ny = -0.5; else if (ny > 0.5) ny = 0.5;
                 var aspect = rect.width / rect.height;
-                var maxAngle = (aspect > 3 ? 3.5 : (aspect > 2 ? 5.5 : 8)) * mult;
+                var maxAngle = (aspect > 3 ? 4.5 : (aspect > 2 ? 7 : 10)) * mult;
                 // "Bend under cursor": cursor area dips back, opposite side lifts
                 var rx = (-ny * maxAngle).toFixed(2);
                 var ry = (nx * maxAngle).toFixed(2);
+                var lift = (6 * mult).toFixed(1);
                 el.style.setProperty('--rx', rx + 'deg');
                 el.style.setProperty('--ry', ry + 'deg');
                 el.style.setProperty('--mx', mx.toFixed(1) + 'px');
                 el.style.setProperty('--my', my.toFixed(1) + 'px');
+                el.style.setProperty('--lift', lift + 'px');
             }
 
             el.addEventListener('mouseenter', function(e) {
@@ -1074,6 +1078,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 el.classList.remove('tilting');
                 el.style.setProperty('--rx', '0deg');
                 el.style.setProperty('--ry', '0deg');
+                el.style.setProperty('--lift', '0px');
                 pending = null;
             });
         });
